@@ -5,8 +5,21 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 const modes = ['Ưu tiên tải nặng', 'Ưu tiên hàng lớn', 'Cân bằng'];
 const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD'];
 const bundledPresets = JSON.parse(document.querySelector('#default-presets').textContent);
+const browserPresetKey = 'hoasen_truck_vehicle_presets';
+const presetInRange = (value, min, max) => typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
+function validPreset(spec) {
+  return spec && typeof spec === 'object' && presetInRange(spec.L, .1, 50) && presetInRange(spec.W, .1, 10) && presetInRange(spec.wall, .1, 5) && presetInRange(spec.H_max, spec.wall, 10) && presetInRange(spec.payload, 1, 100000);
+}
+function readBrowserPresets() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(browserPresetKey) || '{}');
+    return Object.fromEntries(Object.entries(saved).filter(([name, spec]) => name.trim() && name.length <= 80 && !['__proto__', 'constructor', 'prototype'].includes(name) && !Object.hasOwn(bundledPresets, name) && validPreset(spec)));
+  } catch { return {}; }
+}
+function saveBrowserPresets(presets) { localStorage.setItem(browserPresetKey, JSON.stringify(presets)); state.browserPresets = presets; }
 const defaultCargo = (index) => ({ name: `Hàng ${index + 1}`, kind: 'Cuộn tròn', qty: 100, kg: 60, target_kg: 0, priority: 3, orientation: 'Đứng', diameter: 0.4, roll_height: 1.2, plate_length: 1.2, plate_width: 0.6, thickness_mm: 4, baseDimensions: [1.2, 0.4, 0.4], dimensions: [1.2, 0.4, 0.4] });
-const state = { presets: clone(bundledPresets), defaults: Object.keys(bundledPresets), vehicleName: 'Xe tải 8T', vehicle: null, over: true, cargos: Array.from({ length: 6 }, (_, i) => defaultCargo(i)), count: 3, activeCargo: 0, plans: [], planInputs: [], initialInputs: [], originalCargos: [], originalBreakdowns: [], manualDrafts: [], activePlan: 0, busy: false };
+const browserPresets = readBrowserPresets();
+const state = { presets: { ...bundledPresets, ...browserPresets }, browserPresets, presetStorage: 'browser', defaults: Object.keys(bundledPresets), vehicleName: 'Xe tải 8T', vehicle: null, over: true, cargos: Array.from({ length: 6 }, (_, i) => defaultCargo(i)), count: 3, activeCargo: 0, plans: [], planInputs: [], initialInputs: [], originalCargos: [], originalBreakdowns: [], manualDrafts: [], activePlan: 0, busy: false };
 
 async function api(path, method = 'GET', body) {
   const url = `${window.location.origin}${path}`;
@@ -45,7 +58,7 @@ function renderPresets() {
   $('#vehicle-select').innerHTML = Object.keys(state.presets).map(name => `<option value="${esc(name)}" ${name === state.vehicleName ? 'selected' : ''}>${esc(name)}</option>`).join('') + '<option value="custom"' + (state.vehicleName === 'custom' ? ' selected' : '') + '>✏️ Tùy chỉnh</option>';
   $('#preset-table').innerHTML = Object.entries(state.presets).map(([name, v]) => `<tr><td>${esc(name)}</td><td>${fmt(v.L, 2)}</td><td>${fmt(v.W, 2)}</td><td>${fmt(v.wall, 2)}</td><td>${fmt(v.H_max, 2)}</td><td>${fmt(v.payload)}</td></tr>`).join('');
   const custom = state.vehicleName === 'custom';
-  $('#preset-actions').innerHTML = custom ? '<div class="preset-actions"><div class="field"><label for="preset-name">Tên xe mới</label><input id="preset-name" maxlength="80" placeholder="Ví dụ: Xe nội bộ 8T"></div><button class="btn" id="save-preset" type="button">Lưu xe</button></div>' : (state.defaults.includes(state.vehicleName) ? '' : '<div class="preset-actions"><button class="btn danger" id="delete-preset" type="button">Xóa xe đã lưu</button></div>');
+  $('#preset-actions').innerHTML = custom ? `<div class="preset-actions"><div class="field"><label for="preset-name">Tên xe mới</label><input id="preset-name" maxlength="80" placeholder="Ví dụ: Xe nội bộ 8T"></div><button class="btn" id="save-preset" type="button">Lưu xe</button>${state.presetStorage === 'browser' ? '<small>Xe tùy chỉnh được lưu trên trình duyệt này.</small>' : ''}</div>` : (state.defaults.includes(state.vehicleName) ? '' : '<div class="preset-actions"><button class="btn danger" id="delete-preset" type="button">Xóa xe đã lưu</button></div>');
 }
 
 function renderVehicle() {
@@ -284,8 +297,8 @@ document.addEventListener('click', async event => {
   const planTab = t.closest('[data-plan-tab]'); if (planTab) { state.activePlan = Number(planTab.dataset.planTab); renderResults(); return; }
   if (t.id === 'calculate') { calculate(); return; }
   if (t.id === 'recalculate') { recalculate(); return; }
-  if (t.id === 'save-preset') { const name = $('#preset-name').value.trim(); if (!name) { $('#preset-name').focus(); return; } try { const v = state.vehicle; const result = await api('/api/presets', 'POST', { name, spec: { L: v.length, W: v.width, wall: v.wall, H_max: state.over ? v.height : v.wall, payload: v.payload } }); state.presets = result.presets; state.defaults = result.defaults; setVehicle(name); } catch (error) { alert(readableError(error)); } return; }
-  if (t.id === 'delete-preset') { try { const result = await api('/api/presets', 'DELETE', { name: state.vehicleName }); state.presets = result.presets; state.defaults = result.defaults; setVehicle('Xe tải 8T'); } catch (error) { alert(readableError(error)); } }
+  if (t.id === 'save-preset') { const name = $('#preset-name').value.trim(); if (!name) { $('#preset-name').focus(); return; } const v = state.vehicle; const spec = { L: v.length, W: v.width, wall: v.wall, H_max: state.over ? v.height : v.wall, payload: v.payload }; if (state.defaults.includes(name) || ['__proto__', 'constructor', 'prototype'].includes(name) || !validPreset(spec)) { alert('Tên xe hoặc thông số xe không hợp lệ.'); return; } try { if (state.presetStorage === 'browser' || Object.hasOwn(state.browserPresets, name)) { saveBrowserPresets({ ...state.browserPresets, [name]: spec }); state.presets[name] = spec; } else { const result = await api('/api/presets', 'POST', { name, spec }); state.presets = { ...result.presets, ...state.browserPresets }; state.defaults = result.defaults; } setVehicle(name); } catch (error) { alert(readableError(error)); } return; }
+  if (t.id === 'delete-preset') { const name = state.vehicleName; try { if (Object.hasOwn(state.browserPresets, name)) { const next = { ...state.browserPresets }; delete next[name]; saveBrowserPresets(next); delete state.presets[name]; } else { const result = await api('/api/presets', 'DELETE', { name }); state.presets = { ...result.presets, ...state.browserPresets }; state.defaults = result.defaults; } setVehicle('Xe tải 8T'); } catch (error) { alert(readableError(error)); } }
   if (t.id === 'retry-presets') { refreshPresets(); }
 });
 
@@ -300,8 +313,9 @@ async function refreshPresets() {
   try {
     const result = await api('/api/presets');
     if (!result.presets || !result.presets['Xe tải 8T']) throw new Error('Danh sách xe không hợp lệ.');
-    state.presets = result.presets;
+    state.presets = { ...result.presets, ...state.browserPresets };
     state.defaults = result.defaults;
+    state.presetStorage = result.storage === 'browser' ? 'browser' : 'server';
     renderPresets();
     status.innerHTML = '';
   } catch (error) {

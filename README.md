@@ -5,6 +5,12 @@ Một địa chỉ web có trang chọn công cụ và hai công cụ hiện t�
 - **Tồn kho theo định mức:** giữ nguyên `data.js` và `app.js` từ app được cung cấp. Dữ liệu người dùng tiếp tục lưu trong `localStorage` với khóa `hoasen_inventory_data`. Chức năng nhập Excel dùng bản SheetJS 0.20.3 giống app gốc, được lưu cục bộ để không phụ thuộc CDN khi chạy.
 - **Tối ưu tải xe V7:** phần thuật toán trong `truck/core.py` là bản sao nguyên văn từ `Truck_Loading_Optimizer_V7.py` (lưu ở `truck/original_v7.py`). Giao diện web mới gọi thuật toán Python trên cùng máy chủ. Bao gồm preset xe, 6 loại hàng, tấm phẳng, mục tiêu kg, ba chiến lược, chỉnh thủ công, bảng chi tiết và mô phỏng Plotly 3D.
 
+## Triển khai trên Vercel
+
+Chọn thư mục gốc của dự án này làm **Root Directory**. Vercel sẽ phục vụ các trang HTML/CSS/JS và tự tạo Python Functions từ `api/plan.py` và `api/presets.py`. Không cần chạy `server.py` trên Vercel. Sau khi triển khai, kiểm tra `/api/presets` trả về JSON trước khi dùng công cụ tải xe.
+
+Trên Vercel, xe tùy chỉnh được lưu trong bộ nhớ của **trình duyệt đang dùng** (`localStorage`), nên không tự đồng bộ sang thiết bị hoặc trình duyệt khác. Khi chạy trên Mac bằng `server.py`, xe tùy chỉnh vẫn được lưu trong `truck/vehicle_presets.json` như trước.
+
 ## Chạy trên Mac
 
 Nhấp đúp **`Chay_HoaSenHome.command`**. Trang web sẽ tự mở tại **http://127.0.0.1:8765/**. Giữ cửa sổ Terminal vừa mở trong lúc dùng web; đóng cửa sổ sẽ dừng máy chủ tính tải xe.
@@ -29,4 +35,4 @@ python3 -m unittest discover -s tests -v
 
 ## Bổ sung công cụ sau này
 
-Thêm thư mục `new-tool/index.html`, dùng `shared.css` và thanh điều hướng chung. Thêm một thẻ công cụ trong `index.html` và một liên kết trong thanh điều hướng của các trang. Nếu công cụ cần tính toán phía máy chủ, thêm endpoint riêng trong `server.py` và giữ logic nghiệp vụ trong một module độc lập để dễ đối chiếu với bản gốc.
+Thêm thư mục `new-tool/index.html`, dùng `shared.css` và thanh điều hướng chung. Thêm một thẻ công cụ trong `index.html` và một liên kết trong thanh điều hướng của các trang. Nếu công cụ cần tính toán phía máy chủ, thêm endpoint cho cả `server.py` (Mac) và `api/` (Vercel), dùng chung module logic nghiệp vụ để dễ đối chiếu với bản gốc.

@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from server import MODES, parse_request, serialize_plan, validate_preset  # noqa: E402
+from server import MODES, parse_request, plan_response, serialize_plan, validate_preset  # noqa: E402
 from truck import core  # noqa: E402
 
 
@@ -63,6 +63,17 @@ class V7ParityTests(unittest.TestCase):
         match = re.search(r'<script id="default-presets" type="application/json">(.*?)</script>', html)
         self.assertIsNotNone(match)
         self.assertEqual(json.loads(match.group(1)), core.DEFAULT_VEHICLES)
+
+    def test_vercel_and_local_plan_response_share_v7_modes(self):
+        body = {
+            "truck": {"length": 3.1, "width": 1.56, "wall": 0.4, "height": 1.8, "payload": 990},
+            "cargos": [{"name": "Cuộn", "kind": "Cuộn tròn", "qty": 5, "kg": 60, "priority": 3,
+                        "orientation": "Đứng", "diameter": 0.4, "roll_height": 1.2, "target_kg": 0}],
+        }
+        plans = plan_response(body)["plans"]
+        self.assertEqual([plan["mode"] for plan in plans], list(MODES))
+        self.assertTrue(all(plan["loaded"] == [5] for plan in plans))
+        self.assertEqual(len(plan_response({**body, "mode": MODES[1]})["plans"]), 1)
 
 
 if __name__ == "__main__":

@@ -107,6 +107,18 @@ def serialize_plan(title, mode, cargos, truck, payload):
     }
 
 
+def plan_response(body):
+    truck, _wall, payload, cargos = parse_request(body)
+    mode = body.get("mode")
+    if mode is None:
+        plans = [serialize_plan(title, strategy, cargos, truck, payload) for title, strategy in zip(TITLES, MODES)]
+    elif mode in MODES:
+        plans = [serialize_plan(TITLES[MODES.index(mode)], mode, cargos, truck, payload)]
+    else:
+        raise ValueError("Chiến lược xếp hàng không hợp lệ.")
+    return {"plans": plans}
+
+
 def validate_preset(body):
     name = str(body.get("name", "")).strip()[:80]
     if not name:
@@ -130,7 +142,7 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         if urlsplit(self.path).path == "/api/presets":
-            self.send_json({"presets": load_all_presets(), "defaults": list(DEFAULT_VEHICLES)})
+            self.send_json({"presets": load_all_presets(), "defaults": list(DEFAULT_VEHICLES), "storage": "server"})
             return
         super().do_GET()
 
@@ -149,17 +161,9 @@ class Handler(SimpleHTTPRequestHandler):
             if path == "/api/presets":
                 name, spec = validate_preset(body)
                 save_user_preset(name, spec)
-                self.send_json({"presets": load_all_presets(), "defaults": list(DEFAULT_VEHICLES)})
+                self.send_json({"presets": load_all_presets(), "defaults": list(DEFAULT_VEHICLES), "storage": "server"})
                 return
-            truck, _wall, payload, cargos = parse_request(body)
-            mode = body.get("mode")
-            if mode is None:
-                plans = [serialize_plan(title, strategy, cargos, truck, payload) for title, strategy in zip(TITLES, MODES)]
-            elif mode in MODES:
-                plans = [serialize_plan(TITLES[MODES.index(mode)], mode, cargos, truck, payload)]
-            else:
-                raise ValueError("Chiến lược xếp hàng không hợp lệ.")
-            self.send_json({"plans": plans})
+            self.send_json(plan_response(body))
         except (ValueError, TypeError, json.JSONDecodeError) as exc:
             self.send_json({"error": str(exc)}, 400)
 
@@ -173,7 +177,7 @@ class Handler(SimpleHTTPRequestHandler):
             name = str(body.get("name", ""))
             if not delete_user_preset(name):
                 raise ValueError("Không thể xóa xe mặc định hoặc xe không tồn tại.")
-            self.send_json({"presets": load_all_presets(), "defaults": list(DEFAULT_VEHICLES)})
+            self.send_json({"presets": load_all_presets(), "defaults": list(DEFAULT_VEHICLES), "storage": "server"})
         except (ValueError, TypeError, json.JSONDecodeError) as exc:
             self.send_json({"error": str(exc)}, 400)
 
