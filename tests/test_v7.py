@@ -1,5 +1,7 @@
 import sys
 import unittest
+import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -55,6 +57,12 @@ class V7ParityTests(unittest.TestCase):
         self.assertEqual(spec["payload"], 4000)
         with self.assertRaises(ValueError):
             validate_preset({"name": "Xe tải 8T", "spec": spec})
+
+    def test_bundled_vehicle_presets_match_v7(self):
+        html = (ROOT / "truck" / "index.html").read_text()
+        match = re.search(r'<script id="default-presets" type="application/json">(.*?)</script>', html)
+        self.assertIsNotNone(match)
+        self.assertEqual(json.loads(match.group(1)), core.DEFAULT_VEHICLES)
 
 
 if __name__ == "__main__":

@@ -4,14 +4,37 @@ const esc = (value) => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const modes = ['Ưu tiên tải nặng', 'Ưu tiên hàng lớn', 'Cân bằng'];
 const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD'];
+const bundledPresets = JSON.parse(document.querySelector('#default-presets').textContent);
 const defaultCargo = (index) => ({ name: `Hàng ${index + 1}`, kind: 'Cuộn tròn', qty: 100, kg: 60, target_kg: 0, priority: 3, orientation: 'Đứng', diameter: 0.4, roll_height: 1.2, plate_length: 1.2, plate_width: 0.6, thickness_mm: 4, baseDimensions: [1.2, 0.4, 0.4], dimensions: [1.2, 0.4, 0.4] });
-const state = { presets: {}, defaults: [], vehicleName: 'Xe tải 8T', vehicle: null, over: true, cargos: Array.from({ length: 6 }, (_, i) => defaultCargo(i)), count: 3, activeCargo: 0, plans: [], planInputs: [], initialInputs: [], originalCargos: [], originalBreakdowns: [], manualDrafts: [], activePlan: 0, busy: false };
+const state = { presets: clone(bundledPresets), defaults: Object.keys(bundledPresets), vehicleName: 'Xe tải 8T', vehicle: null, over: true, cargos: Array.from({ length: 6 }, (_, i) => defaultCargo(i)), count: 3, activeCargo: 0, plans: [], planInputs: [], initialInputs: [], originalCargos: [], originalBreakdowns: [], manualDrafts: [], activePlan: 0, busy: false };
 
 async function api(path, method = 'GET', body) {
-  const response = await fetch(path, { method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.error || 'Không thể xử lý yêu cầu.');
-  return data;
+  const url = `${window.location.origin}${path}`;
+  const options = { method };
+  if (body !== undefined) { options.headers = { 'Content-Type': 'application/json' }; options.body = JSON.stringify(body); }
+  const attempts = method === 'GET' || path === '/api/plan' ? 2 : 1;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    let response;
+    try {
+      response = await fetch(url, options);
+      const data = await response.json();
+      if (!response.ok) {
+        const error = new Error(data.error || 'Không thể xử lý yêu cầu.');
+        error.apiResponse = true;
+        throw error;
+      }
+      return data;
+    } catch (error) {
+      if (error.apiResponse || attempt === attempts - 1) throw error;
+      await new Promise(resolve => window.setTimeout(resolve, 250));
+    }
+  }
+}
+
+function readableError(error) {
+  const detail = error instanceof Error ? error.message : String(error);
+  if (/string did not match|failed to fetch|network|load failed/i.test(detail)) return 'Không kết nối được bộ tính tải. Vui lòng kiểm tra máy chủ và thử lại.';
+  return detail;
 }
 
 function field(label, name, value, min, max, step, extra = '') {
@@ -54,6 +77,10 @@ function permutations(values) {
   return all.filter((item, index) => all.findIndex(other => JSON.stringify(other) === JSON.stringify(item)) === index);
 }
 
+function boxOrientationLabel(values) {
+  return values.map((value, index) => `${Number(value).toFixed(3)} ${'XYZ'[index]}`).join(' × ');
+}
+
 function renderCargoTabs() {
   $('#cargo-tabs').innerHTML = Array.from({ length: state.count }, (_, i) => `<button type="button" role="tab" data-cargo-tab="${i}" aria-selected="${i === state.activeCargo}" class="${i === state.activeCargo ? 'active' : ''}">Hàng ${i + 1}</button>`).join('');
 }
@@ -71,7 +98,7 @@ function renderCargo() {
   } else {
     const perms = permutations(c.baseDimensions);
     const selected = JSON.stringify(c.dimensions);
-    details = `<div class="form-grid">${field('Dài (m)', 'box-length', c.baseDimensions[0], .001, 20, .05)}${field('Rộng (m)', 'box-width', c.baseDimensions[1], .001, 20, .05)}${field('Cao (m)', 'box-height', c.baseDimensions[2], .001, 20, .05)}</div><div class="field orientation-field"><label for="box-orientation">Tư thế X × Y × Z</label><select id="box-orientation">${perms.map(p => `<option value="${esc(JSON.stringify(p))}" ${JSON.stringify(p) === selected ? 'selected' : ''}>${p.map(x => Number(x).toFixed(3)).join(' X × ')} Z</option>`).join('')}</select></div>`;
+    details = `<div class="form-grid">${field('Dài (m)', 'box-length', c.baseDimensions[0], .001, 20, .05)}${field('Rộng (m)', 'box-width', c.baseDimensions[1], .001, 20, .05)}${field('Cao (m)', 'box-height', c.baseDimensions[2], .001, 20, .05)}</div><div class="field orientation-field"><label for="box-orientation">Tư thế X × Y × Z</label><select id="box-orientation">${perms.map(p => `<option value="${esc(JSON.stringify(p))}" ${JSON.stringify(p) === selected ? 'selected' : ''}>${boxOrientationLabel(p)}</option>`).join('')}</select></div>`;
   }
   $('#cargo-form').innerHTML = `<div class="cargo-form-grid"><div class="field"><label for="name">Tên hàng</label><input id="name" data-field="name" maxlength="100" value="${esc(c.name)}"></div><div class="field"><label for="kind">Dạng hàng</label><select id="kind" data-field="kind">${options(['Cuộn tròn', 'Hình hộp', 'Tấm phẳng'], c.kind)}</select></div>${field('Số lượng cần chở', 'qty', c.qty, 1, 1000000, 1)}${field('Kg / đơn vị', 'kg', c.kg, .001, 50000, .001)}${field('Tải mong muốn (kg) · 0 = tự phân bổ', 'target_kg', c.target_kg, 0, 100000, 100)}<div class="field"><label for="priority">Ưu tiên</label><select id="priority" data-field="priority">${options(['3', '2', '1'], String(c.priority))}</select></div></div><div class="cargo-kind-fields"><h3>Kích thước và tư thế xếp</h3>${details}</div>`;
   updatePlateGrid();
@@ -136,7 +163,7 @@ async function calculate() {
     state.activePlan = 0;
     renderResults();
     $('#results').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  } catch (error) { message(error.message); }
+  } catch (error) { console.error('Không tính được phương án tải xe:', error); message(readableError(error)); }
   finally { state.busy = false; $('#calculate').disabled = false; $('#calculate').textContent = '⚡ Tìm 3 phương án tối ưu'; }
 }
 
@@ -197,7 +224,7 @@ async function recalculate() {
     state.plans[index] = result.plans[0];
     state.planInputs[index] = body;
     renderResults();
-  } catch (error) { alert(error.message); button.disabled = false; button.textContent = '🔄 Tính lại phương án này'; }
+  } catch (error) { console.error('Không tính lại được phương án tải xe:', error); alert(readableError(error)); button.disabled = false; button.textContent = '🔄 Tính lại phương án này'; }
 }
 
 function boxMesh(p) {
@@ -248,7 +275,7 @@ document.addEventListener('input', event => {
   if (t.dataset.manualTarget !== undefined) { state.manualDrafts[state.activePlan][Number(t.dataset.manualTarget)].target_kg = Number(t.value); return; }
   if (t.closest('#vehicle-fields') && t.dataset.field) { state.vehicle[t.dataset.field] = Number(t.value); if (t.dataset.field === 'wall') { $('#height').min = t.value; if (state.vehicle.height < state.vehicle.wall) { state.vehicle.height = state.vehicle.wall; $('#height').value = state.vehicle.height; } } updateVehicleSummary(); updatePlateGrid(); return; }
   if (t.closest('#cargo-form') && t.dataset.field && t.dataset.field !== 'kind') { const c = state.cargos[state.activeCargo]; c[t.dataset.field] = t.dataset.field === 'name' ? t.value : Number(t.value); updatePlateGrid(); return; }
-  if (t.id.startsWith('box-')) { const c = state.cargos[state.activeCargo]; const axis = { 'box-length': 0, 'box-width': 1, 'box-height': 2 }[t.id]; if (axis !== undefined) { c.baseDimensions[axis] = Number(t.value); c.dimensions = [...c.baseDimensions]; const select = $('#box-orientation'); select.innerHTML = permutations(c.baseDimensions).map(p => `<option value="${esc(JSON.stringify(p))}">${p.map(x => Number(x).toFixed(3)).join(' X × ')} Z</option>`).join(''); } }
+  if (t.id.startsWith('box-')) { const c = state.cargos[state.activeCargo]; const axis = { 'box-length': 0, 'box-width': 1, 'box-height': 2 }[t.id]; if (axis !== undefined) { c.baseDimensions[axis] = Number(t.value); c.dimensions = [...c.baseDimensions]; const select = $('#box-orientation'); select.innerHTML = permutations(c.baseDimensions).map(p => `<option value="${esc(JSON.stringify(p))}">${boxOrientationLabel(p)}</option>`).join(''); } }
 });
 
 document.addEventListener('click', async event => {
@@ -257,12 +284,26 @@ document.addEventListener('click', async event => {
   const planTab = t.closest('[data-plan-tab]'); if (planTab) { state.activePlan = Number(planTab.dataset.planTab); renderResults(); return; }
   if (t.id === 'calculate') { calculate(); return; }
   if (t.id === 'recalculate') { recalculate(); return; }
-  if (t.id === 'save-preset') { const name = $('#preset-name').value.trim(); if (!name) { $('#preset-name').focus(); return; } try { const v = state.vehicle; const result = await api('/api/presets', 'POST', { name, spec: { L: v.length, W: v.width, wall: v.wall, H_max: state.over ? v.height : v.wall, payload: v.payload } }); state.presets = result.presets; state.defaults = result.defaults; setVehicle(name); } catch (error) { alert(error.message); } return; }
-  if (t.id === 'delete-preset') { try { const result = await api('/api/presets', 'DELETE', { name: state.vehicleName }); state.presets = result.presets; state.defaults = result.defaults; setVehicle('Xe tải 8T'); } catch (error) { alert(error.message); } }
+  if (t.id === 'save-preset') { const name = $('#preset-name').value.trim(); if (!name) { $('#preset-name').focus(); return; } try { const v = state.vehicle; const result = await api('/api/presets', 'POST', { name, spec: { L: v.length, W: v.width, wall: v.wall, H_max: state.over ? v.height : v.wall, payload: v.payload } }); state.presets = result.presets; state.defaults = result.defaults; setVehicle(name); } catch (error) { alert(readableError(error)); } return; }
+  if (t.id === 'delete-preset') { try { const result = await api('/api/presets', 'DELETE', { name: state.vehicleName }); state.presets = result.presets; state.defaults = result.defaults; setVehicle('Xe tải 8T'); } catch (error) { alert(readableError(error)); } }
+  if (t.id === 'retry-presets') { refreshPresets(); }
 });
 
-async function start() {
-  try { const result = await api('/api/presets'); state.presets = result.presets; state.defaults = result.defaults; setVehicle('Xe tải 8T'); renderCargo(); }
-  catch (error) { $('#vehicle-select').innerHTML = '<option>Không tải được danh sách xe</option>'; message(error.message); }
+async function refreshPresets() {
+  const status = $('#preset-status');
+  try {
+    const result = await api('/api/presets');
+    if (!result.presets || !result.presets['Xe tải 8T']) throw new Error('Danh sách xe không hợp lệ.');
+    state.presets = result.presets;
+    state.defaults = result.defaults;
+    renderPresets();
+    status.innerHTML = '';
+  } catch (error) {
+    console.error('Không đồng bộ được danh sách xe:', error);
+    status.innerHTML = '<div class="notice warn">Chưa đồng bộ được xe đã lưu. Bạn vẫn có thể chọn và chỉnh các xe mặc định. <button type="button" class="btn ghost" id="retry-presets">Thử lại</button></div>';
+  }
 }
-start();
+
+setVehicle('Xe tải 8T');
+renderCargo();
+refreshPresets();
