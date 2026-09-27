@@ -1,0 +1,3 @@
+__pycache__/
+*.pyc
+truck/vehicle_presets.json

@@ -1,0 +1,13 @@
+/* Visual shell only. Inventory calculations and data scripts stay untouched. */
+.site-header{padding:0;position:sticky;top:0;background:rgba(8,9,11,.92)}
+.site-header .site-header-inner{padding:13px 28px;max-width:1440px;gap:24px}
+.site-header .brand{display:flex;min-width:0}
+.site-header .brand img{width:40px;height:40px;padding:3px}
+.site-header .brand strong{font-size:15px;color:#f5f6f7}
+.site-header .brand span{font-size:11px;color:#a0a5ad}
+.site-header .site-nav{display:flex}
+.site-header .site-nav a{font-size:13px;color:#a0a5ad;padding:9px 13px}
+.site-header .site-nav a.active,.site-header .site-nav a:hover{color:#f5f6f7;background:#1d2025}
+.header{position:relative;top:auto}
+body{background:#08090b}
+@media(max-width:850px){.site-header .site-header-inner{padding:13px 16px;align-items:flex-start;gap:8px}.site-header .site-nav{width:100%;overflow:auto;flex-wrap:nowrap}}

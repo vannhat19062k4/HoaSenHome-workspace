@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Tối ưu tải xe V7: chọn xe, xếp hàng, so sánh ba phương án và xem mô hình 3D.">
+  <title>Tối ưu tải xe | Hoa Sen Home</title>
+  <link rel="stylesheet" href="/shared.css">
+  <link rel="stylesheet" href="truck.css">
+  <script defer src="plotly.min.js"></script>
+  <script defer src="truck.js"></script>
+</head>
+<body>
+  <header class="site-header"><div class="site-header-inner">
+    <a class="brand" href="/"><img src="/inventory/Logo HSH.jpg" alt="Hoa Sen Home"><div><strong>Hoa Sen Home</strong><span>Trung tâm công cụ</span></div></a>
+    <nav class="site-nav" aria-label="Công cụ"><a href="/">Tổng quan</a><a href="/inventory/">Tồn kho theo định mức</a><a class="active" href="/truck/">Tối ưu tải xe</a></nav>
+  </div></header>
+  <main class="shell">
+    <div class="page-intro"><div class="eyebrow">CÔNG CỤ 02 / LOGISTICS</div><h1>Tối ưu tải xe</h1><p>V7 · Chọn xe, nhập hàng hóa và tính 3 phương án xếp theo tải trọng và kích thước thùng.</p></div>
+    <div class="truck-layout">
+      <aside class="panel vehicle-panel"><div class="panel-title"><h2>Thông số xe</h2><span class="mini-tag">V7</span></div>
+        <div class="field"><label for="vehicle-select">Loại xe</label><select id="vehicle-select"><option>Đang tải danh sách xe…</option></select></div>
+        <div id="vehicle-fields" class="form-grid"></div>
+        <label class="toggle"><input type="checkbox" id="allow-over" checked><span>Cho phép vượt bửng</span></label>
+        <div id="preset-actions"></div>
+        <div id="vehicle-summary" class="vehicle-summary"></div>
+        <details class="preset-details"><summary>Bảng thông số tất cả xe</summary><div class="table-wrap"><table><thead><tr><th>Xe</th><th>Dài</th><th>Rộng</th><th>Bửng</th><th>Cao max</th><th>Tải</th></tr></thead><tbody id="preset-table"></tbody></table></div></details>
+      </aside>
+      <section class="panel cargo-panel"><div class="panel-title"><div><h2>Dữ liệu hàng</h2><p class="hint">Tối đa 6 loại hàng · Cuộn tròn, hình hộp, tấm phẳng</p></div><div class="field count-field"><label for="cargo-count">Số loại hàng</label><select id="cargo-count"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></div></div>
+        <div class="tab-list" id="cargo-tabs" role="tablist" aria-label="Loại hàng"></div>
+        <div id="cargo-form"></div>
+        <div id="input-warning"></div>
+        <button type="button" class="btn primary calculate" id="calculate">⚡ Tìm 3 phương án tối ưu</button>
+      </section>
+    </div>
+    <section id="results" class="results" aria-live="polite"><div class="empty-result"><span>▤</span><strong>Chưa có phương án</strong><p>Nhập thông tin xe và hàng hóa, sau đó bấm nút tính toán.</p></div></section>
+    <footer class="footnote">Kết quả V7 cần được kiểm tra cùng tải trục, chằng buộc và điều kiện an toàn thực tế trước khi vận hành.</footer>
+  </main>
+</body>
+</html>

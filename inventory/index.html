@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Tool Kiểm Tra Trạng Thái Tồn Kho Theo Định Mức - Hoa Sen Home. So sánh tồn kho thực tế với định mức cơ sở theo 3 cấp: Thấp, Trung bình, Cao.">
+  <title>Kiểm Tra Tồn Kho Theo Định Mức | Hoa Sen Home</title>
+  <link rel="stylesheet" href="/shared.css">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="bridge.css">
+  <script src="xlsx.full.min.js"></script>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
+</head>
+<body>
+
+  <header class="site-header"><div class="site-header-inner">
+    <a class="brand" href="/"><img src="Logo HSH.jpg" alt="Hoa Sen Home"><div><strong>Hoa Sen Home</strong><span>Trung tâm công cụ</span></div></a>
+    <nav class="site-nav" aria-label="Công cụ"><a href="/">Tổng quan</a><a class="active" href="/inventory/">Tồn kho theo định mức</a><a href="/truck/">Tối ưu tải xe</a></nav>
+  </div></header>
+
+  <!-- ========== HEADER ========== -->
+  <header class="header">
+    <div class="header-content">
+      <div class="header-left">
+        <div class="logo-container">
+          <img src="Logo HSH.jpg" alt="Hoa Sen Home Logo" class="logo-img">
+        </div>
+        <div>
+          <h1>Kiểm Tra Tồn Kho Theo Định Mức</h1>
+          <div class="header-subtitle">Hoa Sen Home — Thép Thương Mại — NĐTC 2025-2026</div>
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="btn btn-primary" onclick="document.getElementById('excel-upload').click()" title="Upload file Báo cáo HĐKD">
+          📂 Upload BC HĐKD
+        </button>
+        <input type="file" id="excel-upload" accept=".xlsx,.xls" style="display:none" onchange="handleExcelUpload(this)">
+        <button class="btn btn-outline" onclick="loadSampleData()" title="Tải dữ liệu mẫu để demo">
+          📥 Dữ liệu mẫu
+        </button>
+        <button class="btn btn-outline" onclick="clearData()" title="Xóa toàn bộ số liệu đã nhập">
+          🗑️ Xóa
+        </button>
+        <button class="btn btn-success" onclick="exportCSV()" title="Xuất báo cáo CSV">
+          📤 Xuất CSV
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========== CONTROL BAR ========== -->
+  <div class="control-bar">
+    <div class="control-group">
+      <span class="control-label">Cơ chế tồn kho:</span>
+      <select id="level-select">
+        <option value="thap">📉 Thấp</option>
+        <option value="tb">📊 Trung bình</option>
+        <option value="cao">📈 Cao</option>
+      </select>
+    </div>
+    
+    <div class="control-group">
+      <span class="control-label">Miền:</span>
+      <select id="region-filter">
+        <option value="all">🗺️ Toàn quốc</option>
+        <option value="mien_nam">🌴 Miền Nam</option>
+        <option value="mien_trung">⛰️ Miền Trung</option>
+        <option value="mien_bac">🏔️ Miền Bắc</option>
+      </select>
+    </div>
+
+    <div style="flex:1;"></div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab active" data-view="dashboard">📊 Tổng Quan</button>
+      <button class="tab" data-view="input">📝 Nhập Liệu</button>
+      <button class="tab" data-view="detail">📈 Phân Tích</button>
+    </div>
+  </div>
+
+  <!-- ========== MAIN CONTENT ========== -->
+  <main class="main-content">
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-item"><span class="legend-dot dot-green"></span> Hợp lý (80-120%)</div>
+      <div class="legend-item"><span class="legend-dot dot-yellow"></span> Thấp (50-80%)</div>
+      <div class="legend-item"><span class="legend-dot dot-orange"></span> Cao (120-150%)</div>
+      <div class="legend-item"><span class="legend-dot dot-red"></span> Thiếu nghiêm trọng (&lt;50%)</div>
+      <div class="legend-item"><span class="legend-dot dot-purple"></span> Thừa nghiêm trọng (&gt;150%)</div>
+    </div>
+
+    <!-- ===== DASHBOARD VIEW ===== -->
+    <section id="dashboard-section">
+      <div id="dashboard-content">
+        <!-- Rendered by JS -->
+      </div>
+    </section>
+
+    <!-- ===== INPUT TABLE VIEW ===== -->
+    <section id="table-section" style="display:none;">
+      <div class="table-section">
+        <div class="table-container">
+          <div class="table-header">
+            <div class="table-title">📋 Bảng Nhập Liệu Tồn Kho Thực Tế (kg)</div>
+            <div class="table-actions">
+              <button class="btn btn-outline" onclick="loadSampleData()">📥 Tải mẫu</button>
+              <button class="btn btn-success" onclick="exportCSV()">📤 Xuất CSV</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead id="province-table-head"></thead>
+              <tbody id="province-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CHART/DETAIL VIEW ===== -->
+    <section id="chart-section" style="display:none;">
+      <div class="chart-grid">
+        <div class="chart-card slide-up">
+          <div class="chart-card-title">📊 So Sánh Theo Mặt Hàng</div>
+          <div class="bar-chart" id="product-chart">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+        <div class="chart-card slide-up">
+          <div class="chart-card-title">📋 Phân Bổ Trạng Thái</div>
+          <div id="status-chart">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Upload Result Modal -->
+  <div class="modal-overlay" id="upload-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">📂 Kết Quả Upload Báo Cáo HĐKD</div>
+        <button class="modal-close" onclick="closeUploadModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="upload-modal-body">
+        <!-- Filled by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Scripts -->
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+
+</body>
+</html>
