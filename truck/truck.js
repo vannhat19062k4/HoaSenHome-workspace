@@ -289,7 +289,13 @@ document.addEventListener('click', async event => {
   if (t.id === 'retry-presets') { refreshPresets(); }
 });
 
+let presetRetryTimer = null;
+let presetSyncing = false;
+
 async function refreshPresets() {
+  if (presetSyncing) return;
+  presetSyncing = true;
+  window.clearTimeout(presetRetryTimer);
   const status = $('#preset-status');
   try {
     const result = await api('/api/presets');
@@ -300,9 +306,15 @@ async function refreshPresets() {
     status.innerHTML = '';
   } catch (error) {
     console.error('Không đồng bộ được danh sách xe:', error);
-    status.innerHTML = '<div class="notice warn">Chưa đồng bộ được xe đã lưu. Bạn vẫn có thể chọn và chỉnh các xe mặc định. <button type="button" class="btn ghost" id="retry-presets">Thử lại</button></div>';
+    status.innerHTML = '<div class="notice warn">Chưa kết nối được máy chủ. Bạn có thể chỉnh xe mặc định; cần kết nối để tính tải và dùng xe đã lưu. Trang sẽ tự thử lại. <button type="button" class="btn ghost" id="retry-presets">Thử lại ngay</button></div>';
+    presetRetryTimer = window.setTimeout(refreshPresets, 5000);
+  } finally {
+    presetSyncing = false;
   }
 }
+
+window.addEventListener('online', refreshPresets);
+window.addEventListener('focus', () => { if ($('#preset-status').textContent) refreshPresets(); });
 
 setVehicle('Xe tải 8T');
 renderCargo();
