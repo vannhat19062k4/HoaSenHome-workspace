@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Theo dõi mức phủ hàng tại cửa hàng theo mô hình và ba miền từ báo cáo tồn kho Hoa Sen Home.">
+  <title>Kiểm tra kéo hàng | Hoa Sen Home</title>
+  <link rel="stylesheet" href="/shared.css">
+  <link rel="stylesheet" href="pull.css">
+  <script defer src="/inventory/xlsx.full.min.js"></script>
+  <script defer src="/shared-report.js"></script>
+  <script defer src="pull.js"></script>
+</head>
+<body>
+  <header class="site-header"><div class="site-header-inner">
+    <a class="brand" href="/"><img src="/inventory/Logo HSH.jpg" alt="Hoa Sen Home"><div><strong>Hoa Sen Home</strong><span>Trung tâm công cụ</span></div></a>
+    <nav class="site-nav" aria-label="Công cụ"><a href="/">Tổng quan</a><a href="/inventory/">Tồn kho theo định mức</a><a href="/truck/">Tối ưu tải xe</a><a class="active" href="/pull/">Kiểm tra kéo hàng</a></nav>
+  </div></header>
+  <main class="shell">
+    <div class="page-intro"><div class="eyebrow">CÔNG CỤ 03 / PHÂN PHỐI</div><h1>Kiểm tra kéo hàng</h1><p>So sánh tồn kho từng cửa hàng với mức phân bổ theo mô hình, theo dõi riêng Miền Nam, Miền Trung và Miền Bắc.</p></div>
+    <section class="panel source-panel" aria-labelledby="source-heading">
+      <div><h2 id="source-heading">Báo cáo tồn kho</h2><div id="source-status" class="hint" aria-live="polite">Đang kiểm tra file đã nhập ở công cụ định mức…</div></div>
+      <div class="source-actions"><button id="reload-report" class="btn ghost" type="button">Đọc lại file đã nhập</button><label class="btn upload-button" for="report-file">Chọn file Excel khác</label><input id="report-file" type="file" accept=".xlsx,.xls" hidden></div>
+    </section>
+    <div id="source-warning" aria-live="polite"></div>
+    <section class="panel setup-panel" aria-labelledby="setup-heading">
+      <div class="panel-title"><div><h2 id="setup-heading">Sản phẩm và mức chia</h2><p class="hint">Mức nhập cho một cửa hàng của từng mô hình. Để trống mô hình không áp dụng.</p></div></div>
+      <div class="field product-field"><label for="product-name">Tên sản phẩm trong phần TỒN KHO</label><input id="product-name" type="search" autocomplete="off" placeholder="Gõ tên sản phẩm để tìm" aria-controls="product-options" aria-expanded="false" disabled><div id="product-options" class="product-options" role="listbox" hidden></div><small id="product-count">Chưa có danh sách sản phẩm.</small></div>
+      <div class="rules-head"><h3>Mức chia theo mô hình</h3><span>Đơn vị: kg / cửa hàng</span></div>
+      <div id="rules-grid" class="rules-grid"></div>
+      <div class="setup-actions"><button id="check-pull" type="button" class="btn primary" disabled>Kiểm tra tiến độ</button><button id="export-pull" type="button" class="btn" disabled>↓ Tải Excel</button></div>
+      <div id="input-warning" aria-live="polite"></div>
+    </section>
+    <section id="results" class="results" aria-live="polite"><div class="empty-result"><span>▤</span><strong>Chưa có kết quả</strong><p>Chọn sản phẩm và nhập mức chia để kiểm tra từng cửa hàng.</p></div></section>
+  </main>
+</body>
+</html>

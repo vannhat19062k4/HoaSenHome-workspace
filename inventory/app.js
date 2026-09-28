@@ -491,6 +491,7 @@ function loadSampleData() {
   });
   
   AppState.actualInventory = sampleData;
+  ReportStore.clear().catch(error => console.warn('Could not clear shared report:', error));
   saveToLocalStorage();
   renderAll();
   showToast('Đã tải dữ liệu mẫu thành công!', 'success');
@@ -500,6 +501,7 @@ function clearData() {
   if (confirm('Bạn có chắc muốn xóa toàn bộ số liệu tồn kho đã nhập?')) {
     AppState.actualInventory = {};
     localStorage.removeItem('hoasen_inventory_data');
+    ReportStore.clear().catch(error => console.warn('Could not clear shared report:', error));
     renderAll();
     showToast('Đã xóa toàn bộ số liệu', 'info');
   }
@@ -820,6 +822,10 @@ function handleExcelUpload(input) {
       // Step 5: Load extracted data
       AppState.actualInventory = extracted;
       saveToLocalStorage();
+      ReportStore.save(e.target.result, file, workbook.SheetNames).catch(error => {
+        console.warn('Could not save workbook for pull tracking:', error);
+        showToast('Đã nhập tồn kho, nhưng chưa lưu được file cho công cụ kiểm tra kéo hàng.', 'error');
+      });
       renderAll();
       
       // Step 6: Show results modal
