@@ -8,6 +8,15 @@ Một địa chỉ web có trang chọn công cụ và ba công cụ hiện tạ
 
 File Excel mới nhập được lưu trong IndexedDB của trình duyệt để chia sẻ giữa công cụ tồn kho và công cụ kéo hàng. File không được tải lên máy chủ. Nếu dùng trình duyệt/thiết bị khác, cần nhập lại file.
 
+Giao diện mặc định là tối. Nút Sáng/Tối ở thanh đầu trang lưu lựa chọn trong trình duyệt và áp dụng chung cho cả ba công cụ. Dòng “Made by Danny196Vnhat” và logo Danny nằm ở chân trang.
+
+## Cấu trúc thư mục
+
+- `assets/`: giao diện và dữ liệu dùng chung, chế độ sáng/tối, logo Hoa Sen Home và logo Danny.
+- `inventory/`, `truck/`, `pull/`: ba công cụ độc lập trong cùng website.
+- `api/`: các hàm máy chủ cho Vercel; `server.py`: máy chủ chạy trên Mac.
+- `tests/`: kiểm tra thuật toán tải xe và kết quả kéo hàng.
+
 ## Triển khai trên Vercel
 
 Chọn thư mục gốc của dự án này làm **Root Directory**. Vercel sẽ phục vụ các trang HTML/CSS/JS và tự tạo Python Functions từ `api/plan.py` và `api/presets.py`. Không cần chạy `server.py` trên Vercel. Sau khi triển khai, kiểm tra `/api/presets` trả về JSON trước khi dùng công cụ tải xe.
@@ -39,4 +48,4 @@ node tests/test_pull.cjs
 
 ## Bổ sung công cụ sau này
 
-Thêm thư mục `new-tool/index.html`, dùng `shared.css` và thanh điều hướng chung. Thêm một thẻ công cụ trong `index.html` và một liên kết trong thanh điều hướng của các trang. Nếu công cụ cần tính toán phía máy chủ, thêm endpoint cho cả `server.py` (Mac) và `api/` (Vercel), dùng chung module logic nghiệp vụ để dễ đối chiếu với bản gốc.
+Thêm thư mục `new-tool/index.html`, dùng `/assets/shared.css`, `/assets/theme.css`, `/assets/theme.js` và thanh điều hướng chung. Thêm một thẻ công cụ trong `index.html` và một liên kết trong thanh điều hướng của các trang. Nếu công cụ cần tính toán phía máy chủ, thêm endpoint cho cả `server.py` (Mac) và `api/` (Vercel), dùng chung module logic nghiệp vụ để dễ đối chiếu với bản gốc.

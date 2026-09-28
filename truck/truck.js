@@ -266,8 +266,15 @@ function drawPlot(plan, truck) {
   }
   const corners = [[0,0,0],[L,0,0],[0,W,0],[L,W,0],[0,0,H],[L,0,H],[0,W,H],[L,W,H]];
   for (const [a,b] of [[0,1],[2,3],[0,2],[1,3],[4,5],[6,7],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]]) traces.push({ type: 'scatter3d', mode: 'lines', x: [corners[a][0],corners[b][0]], y: [corners[a][1],corners[b][1]], z: [corners[a][2],corners[b][2]], line: { width: 4, color: '#aab0ba' }, showlegend: false, hoverinfo: 'skip' });
-  window.Plotly.newPlot(target, traces, { paper_bgcolor: '#101216', plot_bgcolor: '#101216', font: { family: 'Inter, sans-serif', color: '#d5d9df' }, scene: { xaxis: { title: 'X – Dài (m)' }, yaxis: { title: 'Y – Rộng (m)' }, zaxis: { title: 'Z – Cao (m)' }, aspectmode: 'data' }, margin: { l: 0, r: 0, t: 5, b: 0 }, autosize: true }, { responsive: true, displaylogo: false });
+  const light = document.documentElement.dataset.theme === 'light';
+  const background = light ? '#f6f8fa' : '#101216';
+  const foreground = light ? '#334154' : '#d5d9df';
+  window.Plotly.newPlot(target, traces, { paper_bgcolor: background, plot_bgcolor: background, font: { family: 'Inter, sans-serif', color: foreground }, scene: { xaxis: { title: 'X – Dài (m)', backgroundcolor: background, color: foreground }, yaxis: { title: 'Y – Rộng (m)', backgroundcolor: background, color: foreground }, zaxis: { title: 'Z – Cao (m)', backgroundcolor: background, color: foreground }, aspectmode: 'data' }, margin: { l: 0, r: 0, t: 5, b: 0 }, autosize: true }, { responsive: true, displaylogo: false });
 }
+
+window.addEventListener('hoasen-theme-change', () => {
+  if (state.plans.length && $('#plot3d')) drawPlot(state.plans[state.activePlan], state.planInputs[state.activePlan].truck);
+});
 
 document.addEventListener('change', event => {
   const t = event.target;
