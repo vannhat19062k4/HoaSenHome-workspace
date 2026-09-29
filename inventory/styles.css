@@ -13,7 +13,7 @@
   /* ── Typography ── */
   --text-primary: #f5f5f7;
   --text-secondary: #a1a1a6;
-  --text-muted: #6e6e73;
+  --text-muted: #a0a5ad;
 
   /* ── Functional Colors Only (for status indicators) ── */
   --accent-green: #30d158;
@@ -572,6 +572,13 @@ thead th {
 
 thead th.col-product {
   min-width: 150px;
+}
+
+thead th.sticky-province-heading {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+  background: var(--bg-elevated);
 }
 
 thead th.col-number {

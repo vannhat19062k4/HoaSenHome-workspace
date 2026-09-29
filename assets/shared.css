@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-:root{--bg:#08090b;--surface:#15171b;--surface-2:#1d2025;--border:#2a2e35;--text:#f5f6f7;--muted:#a0a5ad;--soft:#6d747d;--accent:#e4232e;--accent-hover:#ff3b45;--green:#31ce79;--radius:16px}
+:root{--bg:#08090b;--surface:#15171b;--surface-2:#1d2025;--border:#2a2e35;--text:#f5f6f7;--muted:#a0a5ad;--soft:#969da6;--accent:#e4232e;--accent-hover:#ff3b45;--green:#31ce79;--radius:16px}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{margin:0;background:var(--bg);color:var(--text);font:400 14px/1.55 Inter,-apple-system,BlinkMacSystemFont,"SF Pro Display",Arial,sans-serif;-webkit-font-smoothing:antialiased}

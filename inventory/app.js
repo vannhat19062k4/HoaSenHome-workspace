@@ -246,7 +246,7 @@ function renderProvinceTable() {
   // Build table header
   let headerHTML = `
     <tr>
-      <th class="col-product" style="position: sticky; left: 0; background: rgba(17, 24, 39, 0.95); z-index: 10;">Tỉnh / Tổng Kho</th>
+      <th class="col-product sticky-province-heading">Tỉnh / Tổng Kho</th>
       <th class="col-number">Số CH</th>
   `;
   

@@ -43,8 +43,17 @@ html[data-theme="light"] .status-done{color:#16723c}
 html[data-theme="light"] .status-open{color:#925c00}
 html[data-theme="light"] .status-extra{color:#335ca7}
 html[data-theme="light"] .header{background:rgba(255,255,255,.92)}
-html[data-theme="light"] .legend-item,html[data-theme="light"] .control-group,html[data-theme="light"] .tab{color:var(--text-secondary)}
+html[data-theme="light"] .legend-item,html[data-theme="light"] .control-group,html[data-theme="light"] .tab:not(.active){color:var(--text-secondary)}
+html[data-theme="light"] .tab.active{background:#18212c;color:#fff}
+html[data-theme="light"] .tab.active:hover{color:#fff}
+html[data-theme="light"] .input-cell{background:#fff;border-color:#c9d2dd;color:var(--text-primary)}
+html[data-theme="light"] .input-cell:focus{background:#fff;border-color:#64748b}
 html[data-theme="light"] .table-scroll tr:nth-child(even) td{background:#f8fafc}
+html[data-theme="light"] .table-scroll tr.row-region td{background:#edf1f5;color:var(--text-primary)}
+html[data-theme="light"] .table-scroll tr.row-tong-kho td:not(:first-child){background:#faf7ff}
+html[data-theme="light"] .type-badge{background:#e9edf2;color:#4d5968}
+html[data-theme="light"] .status-badge.status-empty{background:#e9edf2;color:#586473}
+html[data-theme="light"] .btn-primary:hover,html[data-theme="light"] .btn-success:hover{background:#354252;color:#fff}
 html[data-theme="light"] .status-badge.status-none{background:#edf0f4}
 html[data-theme="light"] .footer-mark{color:var(--soft)}
 @media(max-width:850px){.site-header .site-header-inner{flex-direction:row;flex-wrap:wrap;align-items:center}.site-header .site-nav{order:3;flex-basis:100%;width:100%}.theme-toggle{margin-left:auto}.site-footer-inner{padding:18px 16px}}
