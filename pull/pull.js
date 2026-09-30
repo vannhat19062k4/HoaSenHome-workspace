@@ -222,10 +222,22 @@ function metric(label, value) { return `<div class="metric"><span>${label}</span
 
 function renderRegion(region, rows) {
   const sum = summarize(rows);
-  return `<section class="panel region-block"><div class="region-top"><div><h2>${region.label}</h2><p>${sum.stores} cửa hàng áp dụng · ${sum.reached} đã đạt mức</p></div><strong>${fmt(sum.progress * 100)}% mức phủ</strong></div>
-    <div class="metric-grid">${metric('Mức cần có', `${fmt(sum.target)} kg`)}${metric('Đã kéo (tồn hiện tại)', `${fmt(sum.stock)} kg`)}${metric('Còn cần kéo', `${fmt(sum.remaining)} kg`)}${metric('Cửa hàng đã đạt', `${sum.reached}/${sum.stores}`)}</div>
+  const provinces = new Map();
+  rows.forEach(row => {
+    const key = norm(row.province);
+    if (!provinces.has(key)) provinces.set(key, { name: row.province || 'Chưa rõ tỉnh', rows: [] });
+    provinces.get(key).rows.push(row);
+  });
+  const detailRows = [...provinces.values()].map(province => {
+    const subtotal = summarize(province.rows);
+    return `<tr class="province-total"><th scope="rowgroup">${esc(province.name)}<small>${subtotal.reached}/${subtotal.stores} CH đạt mức</small></th><td>${subtotal.stores} cửa hàng</td><td>—</td><td class="numeric">${fmt(subtotal.target)}</td><td class="numeric">${fmt(subtotal.stock)}</td><td class="numeric">${fmt(subtotal.remaining)}</td></tr>
+      ${province.rows.map(row => `<tr class="store-row"><td>${esc(row.province || '—')}</td><td class="store-name"><strong>${esc(row.name)}</strong><small>${esc(row.id)}</small></td><td><span class="model-badge">${esc(row.model)}</span></td><td class="numeric">${fmt(row.target)}</td><td class="numeric ${row.stock === 0 ? 'pull-zero' : ''}">${row.stock === 0 ? '—' : fmt(row.stock)}</td><td class="numeric"><span class="pull-remaining ${row.remaining ? 'needs-pull' : 'pull-complete'}">${row.remaining ? fmt(row.remaining) : '✓ Đã đạt'}</span></td></tr>`).join('')}`;
+  }).join('');
+  return `<section class="panel region-block"><div class="region-top"><div><h2>${region.label}</h2><p>${sum.stores} cửa hàng · ${sum.reached} đã đạt mức · ${provinces.size} tỉnh</p></div><strong>${fmt(sum.progress * 100)}% mức phủ</strong></div>
+    <div class="region-figures"><span>Mức cần có <strong>${fmt(sum.target)} kg</strong></span><span>Tồn hiện tại <strong>${fmt(sum.stock)} kg</strong></span><span>Còn cần kéo <strong>${fmt(sum.remaining)} kg</strong></span></div>
     <div class="progress-track"><div class="progress-fill" style="width:${(sum.progress * 100).toFixed(2)}%"></div></div>
-    <div class="table-wrap" style="margin-top:18px"><table><thead><tr><th>Mã CH</th><th>Tỉnh</th><th>Cửa hàng</th><th>Mô hình</th><th class="numeric">Mức/CH</th><th class="numeric">Đã kéo (kg)</th><th class="numeric">Còn cần kéo</th><th class="numeric">Mức phủ</th><th>Trạng thái</th></tr></thead><tbody>${rows.map(row => `<tr><td>${esc(row.id)}</td><td>${esc(row.province)}</td><td>${esc(row.name)}</td><td>${esc(row.model)}</td><td class="numeric">${fmt(row.target)}</td><td class="numeric">${fmt(row.stock)}</td><td class="numeric">${fmt(row.remaining)}</td><td class="numeric">${fmt(row.progress * 100)}%</td><td class="${row.remaining ? 'status-open' : row.stock > row.target ? 'status-extra' : 'status-done'}">${row.remaining ? 'Còn cần kéo' : row.stock > row.target ? 'Vượt mức' : 'Đã đạt'}</td></tr>`).join('') || '<tr><td colspan="9">Không có cửa hàng thuộc mô hình đã chọn.</td></tr>'}</tbody></table></div></section>`;
+    <p class="region-note">Mỗi dòng vàng nhạt là tổng của một tỉnh. Cột “Còn cần kéo” cộng phần thiếu của từng cửa hàng.</p>
+    <div class="table-wrap pull-table-wrap"><table class="pull-detail-table"><thead><tr><th scope="col">Tỉnh</th><th scope="col">Tên cửa hàng</th><th scope="col">Mô hình</th><th scope="col" class="numeric">Mức cần có <small>kg / CH</small></th><th scope="col" class="numeric">Tồn hiện tại <small>kg</small></th><th scope="col" class="numeric">Còn cần kéo <small>kg</small></th></tr></thead><tbody>${detailRows || '<tr><td colspan="6">Không có cửa hàng thuộc mô hình đã chọn.</td></tr>'}</tbody></table></div></section>`;
 }
 
 function renderResult(result) {

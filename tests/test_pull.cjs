@@ -19,8 +19,8 @@ fields['[data-model="CHTT"]'].value = '50';
 context.window = { XLSX };
 context.document = { querySelector: selector => fields[selector] };
 const app = fs.readFileSync(path.join(root, 'pull/pull.js'), 'utf8').split("$('#rules-grid').innerHTML")[0];
-vm.runInContext(`${app}\nthis.testApi = { parseReport, calculate, exportExcel, state };`, context);
-const { parseReport, calculate, exportExcel, state } = context.testApi;
+vm.runInContext(`${app}\nthis.testApi = { parseReport, calculate, exportExcel, renderRegion, state };`, context);
+const { parseReport, calculate, exportExcel, renderRegion, state } = context.testApi;
 
 const grid = Array.from({ length: 8 }, () => Array(157));
 grid[0][93] = 'TỒN KHO 24/09/2026';
@@ -56,4 +56,13 @@ fields['#product-name'].value = 'Cục kê bê tông';
 const zeroStock = calculate();
 assert.equal(zeroStock.total.stock, 0);
 assert.equal(zeroStock.total.remaining, 120);
+
+const grouped = renderRegion({ label: 'Miền Nam' }, [
+  { id: 'AG.1', province: 'An Giang', name: 'Cửa hàng 1', model: '1A', target: 20, stock: 5, remaining: 15 },
+  { id: 'AG.2', province: 'An Giang', name: 'Cửa hàng 2', model: '1A', target: 20, stock: 50, remaining: 0 },
+  { id: 'KG.1', province: 'Kiên Giang', name: 'Cửa hàng 3', model: 'CHTT', target: 50, stock: 0, remaining: 50 },
+]);
+assert.equal((grouped.match(/class="province-total"/g) || []).length, 2);
+assert.match(grouped, /An Giang[\s\S]*?2 cửa hàng[\s\S]*?55[\s\S]*?15[\s\S]*?Cửa hàng 1[\s\S]*?Cửa hàng 2[\s\S]*?Kiên Giang/);
+assert.match(grouped, /Cửa hàng 3[\s\S]*?pull-zero/);
 console.log('Pull tracking checks passed');
