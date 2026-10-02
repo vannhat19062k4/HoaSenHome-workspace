@@ -5,6 +5,7 @@
 <link rel="stylesheet" href="/assets/theme.css">
 <script defer src="/inventory/xlsx.full.min.js"></script>
 <script defer src="/dashboard/parser.js"></script>
+<script defer src="/assets/shared-report.js"></script>
 <style>
 :root{--border:#303944;--surface:#181e25;--surface-2:#222a34;--text:#f0f3f6;--soft:#a5afbc;--accent:#e4232e;--ink:#14243a;--muted:#62738a;--line:#e2e9f1;--paper:#fff;--bg:#f4f7fb;--blue:#d62735;--cyan:#19a9c2;--green:#12a786;--amber:#e5a33d;--purple:#8167cc;--colors:#2865d9,#19a9c2,#12a786,#e5a33d,#8167cc}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;font-variant-numeric:tabular-nums}button,input{font:inherit}button{cursor:pointer}.dashboard-hero{background:linear-gradient(125deg,#171a20,#272329 62%,#72303b);color:#fff;padding:26px max(22px,calc((100vw - 1440px)/2)) 31px}.dashboard-hero h1{font-size:25px;letter-spacing:-.03em;margin:0}.dashboard-hero p{margin:5px 0 0;color:#cfe3fb}.shell{max-width:1440px;margin:auto;padding:20px 24px 50px}.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:-40px 0 18px;position:relative}.drop{background:#fff;border:1px solid #b9cce4;border-radius:12px;box-shadow:0 8px 30px #102a4d18;display:flex;gap:14px;align-items:center;padding:16px 21px;min-width:290px;cursor:pointer}.drop.drag{border-color:var(--blue);background:#eef5ff}.drop input{display:none}.drop strong{color:var(--blue)}.drop .hint{color:var(--muted);font-size:13px}.button{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:10px;padding:11px 15px;font-weight:650}.button:hover,.chip:hover{background:#edf4fc}.status{color:var(--muted);font-size:13px}.empty{padding:70px 20px;text-align:center;background:#fff;border:1px solid var(--line);border-radius:16px}.empty h2{margin:0 0 6px}.empty p{margin:0;color:var(--muted)}.titlebar{display:flex;justify-content:space-between;align-items:end;gap:20px;margin:17px 0 15px}.titlebar h2{font-size:25px;letter-spacing:-.035em;margin:0}.titlebar p{margin:3px 0 0;color:var(--muted);font-size:13px}.tabs{display:flex;gap:5px;overflow:auto;border-bottom:1px solid #dce5ef;margin-bottom:20px}.tabs button{background:transparent;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:10px 16px;white-space:nowrap;font-weight:650}.tabs button.active{color:var(--blue);border-color:var(--blue)}.panel{display:none}.panel.active{display:block}
@@ -29,14 +30,19 @@ html[data-theme="dark"] tbody tr:hover td{background:#26313d}
 html[data-theme="dark"] .track{background:#303b48}
 html[data-theme="dark"] .button:hover,html[data-theme="dark"] .chip:hover{background:#293541}
 html[data-theme="dark"] .search{background:#141b22;color:var(--ink)}
+.source-panel{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;background:var(--paper);border:1px solid var(--line);border-radius:16px;box-shadow:0 8px 30px #102a4d18;padding:20px 24px;margin:-42px 0 18px;position:relative}.source-panel.drag{outline:3px dashed var(--blue);outline-offset:3px}.source-info h2{font-size:19px;margin:0 0 5px}.source-info p{margin:0}.source-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.upload-button{display:inline-flex;align-items:center;cursor:pointer;background:#e8edf4}.source-actions input[hidden]{display:none}.source-actions .button{min-height:42px}.status{overflow-wrap:anywhere}
+@media(max-width:650px){.source-panel{margin-top:-38px;padding:16px}.source-actions{width:100%}.source-actions .button{flex:1;text-align:center;justify-content:center;min-width:155px}}
 </style></head><body>
 <header class="site-header"><div class="site-header-inner">
   <a class="brand" href="/"><img src="/assets/logo-hsh.jpg" alt="Hoa Sen Home"><div><strong>Hoa Sen Home</strong><span>Trung tâm công cụ</span></div></a>
   <nav class="site-nav" aria-label="Công cụ"><a href="/">Tổng quan</a><a href="/inventory/">Tồn kho theo định mức</a><a href="/truck/">Tối ưu tải xe</a><a href="/pull">Kiểm tra kéo hàng</a><a class="active" href="/dashboard/">Dashboard kinh doanh</a></nav>
 </div></header>
-<div class="dashboard-hero"><h1>Dashboard kinh doanh thép thương mại</h1><p>Thả báo cáo Excel hằng ngày, dashboard tự cập nhật.</p></div>
-<main class="shell"><div class="toolbar"><label class="drop" id="drop"><input id="file" type="file" accept=".xlsx"><strong>Chọn hoặc thả file Excel</strong><span class="hint">.xlsx</span></label><button class="button" id="print">In / lưu PDF</button><span class="status" id="status"></span></div>
-<div id="empty" class="empty"><h2>Chưa có báo cáo</h2><p>Thả file Excel vào ô phía trên để xem dashboard.</p></div>
+<div class="dashboard-hero"><h1>Dashboard kinh doanh thép thương mại</h1><p>Dùng lại báo cáo đã nhập ở công cụ tồn kho hoặc chọn file Excel khác.</p></div>
+<main class="shell"><div class="source-panel" id="drop">
+  <div class="source-info"><h2>Báo cáo kinh doanh</h2><p class="status" id="status" role="status" aria-live="polite">Đang kiểm tra file đã nhập ở công cụ tồn kho…</p></div>
+  <div class="source-actions"><button class="button" id="reload-report" type="button">Đọc lại file đã nhập</button><label class="button upload-button" for="file">Chọn file Excel khác</label><input id="file" type="file" accept=".xlsx" hidden><button class="button" id="print" type="button">In / lưu PDF</button></div>
+</div>
+<div id="empty" class="empty"><h2>Chưa có báo cáo</h2><p>Nhập file ở công cụ tồn kho theo định mức hoặc chọn file Excel khác tại đây.</p></div>
 <div id="app" hidden><div class="titlebar"><div><h2 id="title"></h2><p id="subtitle"></p></div></div><nav class="tabs" id="tabs"></nav>
 <section id="overview" class="panel active"></section><section id="products" class="panel"></section><section id="regions" class="panel"></section><section id="inventory" class="panel"></section><section id="supply" class="panel"></section><section id="stores" class="panel"></section></div></main>
 <script>const initialData=null;let D=initialData;let selectedCategory=null;const COLORS=['#d62735','#19a9c2','#12a786','#e5a33d','#8167cc'];
@@ -63,17 +69,51 @@ function renderSupply(){let overall=D.supply[0],ratio=overall.requested_kg?overa
 function drawStores(){let term=(document.getElementById('storeSearch').value||'').toLocaleLowerCase('vi'),rows=D.stores.filter(s=>(s.id+' '+s.name+' '+s.province_source).toLocaleLowerCase('vi').includes(term));set('storeCount',`${n(rows.length)} cửa hàng`);set('storeTable',table(['Mã','Cửa hàng','Tỉnh','Lũy kế (kg)','Kế hoạch (kg)','Tiến độ','Tồn kho (kg)'],rows.map(s=>`<tr><td>${esc(s.id)}</td><td>${esc(s.name)}</td><td>${esc(s.province_source)}</td>${cell(s.mtd_kg)}${cell(s.plan_kg)}<td><div class="mini">${progress(s.mtd_kg,s.plan_kg)}<b>${pct(s.plan_kg?s.mtd_kg/s.plan_kg:null)}</b></div></td>${cell(s.inventory_kg)}</tr>`)))}
 function renderStores(){let noSales=D.store_alerts.reduce((a,x)=>a+(x.no_sales||0),0);set('stores',box('Cửa hàng theo nhóm hàng',table(['Nhóm hàng','Chưa phát sinh sản lượng','Dưới định mức tồn kho'],D.store_alerts.map(x=>`<tr><td>${esc(x.name)}</td>${cell(x.no_sales)}${cell(x.below_stock_min)}</tr>`)))+`<div class="surface"><div class="store-head"><div><h3>Danh sách cửa hàng</h3><p class="subtext" id="storeCount"></p></div><input class="search" id="storeSearch" type="search" placeholder="Tìm mã, cửa hàng hoặc tỉnh"></div><div id="storeTable"></div></div>`);document.getElementById('storeSearch').oninput=drawStores;drawStores()}
 function render(){if(!D)return;document.getElementById('empty').hidden=true;document.getElementById('app').hidden=false;set('title',`Kết quả kinh doanh · ${esc(D.report_date.split('-').reverse().join('/'))}`);set('subtitle',`${esc(D.filename)} · Tháng ${D.month}`);let pages=[['overview','Tổng quan'],['products','Nhóm hàng'],['regions','Miền & tỉnh'],['inventory','Tồn kho'],['supply','Kéo hàng'],['stores','Cửa hàng']];set('tabs',pages.map(([id,title],i)=>`<button data-page="${id}" class="${i?'':'active'}">${title}</button>`).join(''));document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-page]').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(b.dataset.page).classList.add('active')});renderOverview();renderProducts();renderRegions();renderInventory();renderSupply();renderStores()}
-const input=document.getElementById('file'),drop=document.getElementById('drop'),status=document.getElementById('status');async function loadFile(f){
+const input=document.getElementById('file'),drop=document.getElementById('drop'),status=document.getElementById('status');
+let reportLoadId=0;
+function clearDashboard(){D=null;selectedCategory=null;document.getElementById('app').hidden=true;document.getElementById('empty').hidden=false}
+function analyzeReport(buffer,name){
+  if(!window.XLSX||!window.HoaSenDashboardParser)throw Error('Chưa tải được bộ đọc Excel. Hãy tải lại trang.');
+  const workbook=XLSX.read(new Uint8Array(buffer),{type:'array',cellDates:true});
+  return HoaSenDashboardParser.analyze(workbook,name);
+}
+async function useSavedReport(){
+  const loadId=++reportLoadId;
+  status.textContent='Đang đọc file đã nhập ở công cụ tồn kho…';
+  try{
+    const saved=await ReportStore.load();
+    if(loadId!==reportLoadId)return;
+    if(!saved){clearDashboard();status.textContent='Chưa có file báo cáo dùng chung. Hãy nhập ở công cụ tồn kho hoặc chọn file tại đây.';return}
+    const data=analyzeReport(saved.data,saved.fileName);
+    if(loadId!==reportLoadId)return;
+    D=data;selectedCategory=null;render();status.textContent=`${saved.fileName} · Báo cáo ngày ${data.report_date.split('-').reverse().join('/')}`;
+  }catch(error){
+    if(loadId!==reportLoadId)return;
+    clearDashboard();status.textContent='Không đọc được file đã nhập: '+error.message;
+  }
+}
+async function loadFile(f){
   if(!f)return;
+  const loadId=++reportLoadId;
   status.textContent='Đang tạo dashboard…';
   try{
-    if(!f.name.toLowerCase().endsWith('.xlsx')||f.size>25*1024*1024) throw Error('Hãy chọn file .xlsx dưới 25 MB.');
-    const workbook=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:true});
-    D=HoaSenDashboardParser.analyze(workbook,f.name);
-    selectedCategory=null;
-    render();
-    status.textContent='Đã cập nhật '+f.name;
-  }catch(error){status.textContent='Không mở được file: '+error.message;}
+    if(!f.name.toLowerCase().endsWith('.xlsx')||f.size>25*1024*1024)throw Error('Hãy chọn file .xlsx dưới 25 MB.');
+    const buffer=await f.arrayBuffer();
+    if(loadId!==reportLoadId)return;
+    const data=analyzeReport(buffer,f.name);
+    if(loadId!==reportLoadId)return;
+    D=data;selectedCategory=null;render();status.textContent=`${f.name} · Báo cáo ngày ${data.report_date.split('-').reverse().join('/')}`;
+    try{await ReportStore.save(buffer,f,[])}catch(error){if(loadId===reportLoadId)status.textContent+=' · Chưa lưu để dùng lại: '+error.message}
+  }catch(error){
+    if(loadId!==reportLoadId)return;
+    clearDashboard();status.textContent='Không mở được file: '+error.message;
+  }
 }
-input.onchange=()=>loadFile(input.files[0]);drop.ondragover=e=>{e.preventDefault();drop.classList.add('drag')};drop.ondragleave=()=>drop.classList.remove('drag');drop.ondrop=e=>{e.preventDefault();drop.classList.remove('drag');loadFile(e.dataTransfer.files[0])};document.getElementById('print').onclick=()=>window.print();render();
+input.onchange=()=>{loadFile(input.files[0]);input.value=''};
+document.getElementById('reload-report').onclick=useSavedReport;
+drop.ondragover=e=>{e.preventDefault();drop.classList.add('drag')};
+drop.ondragleave=()=>drop.classList.remove('drag');
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove('drag');loadFile(e.dataTransfer.files[0])};
+document.getElementById('print').onclick=()=>window.print();
+window.addEventListener('DOMContentLoaded',useSavedReport);
 </script></body></html>
