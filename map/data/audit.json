@@ -1,0 +1,165 @@
+{
+  "total": 387,
+  "types": {
+    "traditional": 240,
+    "home": 147
+  },
+  "regions": {
+    "Nam": 157,
+    "Trung": 111,
+    "Bắc": 119
+  },
+  "provinces": {
+    "An Giang": 29,
+    "Cần Thơ": 17,
+    "Vĩnh Long": 19,
+    "Tây Ninh": 20,
+    "Hồ Chí Minh": 21,
+    "Đồng Nai": 19,
+    "Lâm Đồng": 32,
+    "Khánh Hòa": 16,
+    "Đắk Lắk": 23,
+    "Gia Lai": 23,
+    "Quảng Ngãi": 18,
+    "Đà Nẵng": 14,
+    "Huế": 6,
+    "Quảng Trị": 11,
+    "Hà Tĩnh": 10,
+    "Nghệ An": 11,
+    "Thanh Hóa": 12,
+    "Ninh Bình": 12,
+    "Hải Phòng": 7,
+    "Quảng Ninh": 5,
+    "Hà Nội": 9,
+    "Hưng Yên": 6,
+    "Bắc Ninh": 8,
+    "Lạng Sơn": 2,
+    "Phú Thọ": 10,
+    "Điện Biên": 1,
+    "Sơn La": 5,
+    "Lai Châu": 2,
+    "Lào Cai": 9,
+    "Tuyên Quang": 5,
+    "Thái Nguyên": 5
+  },
+  "coordinateSources": {
+    "google_maps_dms": 355,
+    "google_maps_view": 17,
+    "unresolved_short_link": 11,
+    "google_maps_route_destination": 1,
+    "google_maps_query": 3
+  },
+  "unlocated": [
+    {
+      "code": "G73",
+      "name": "Hiệp Hòa",
+      "province": "Bắc Ninh",
+      "sourceRow": 230,
+      "sourceSheet": "CỬA HÀNG TRUYỀN THỐNG",
+      "mapsUrl": "https://goo.gl/maps/xFSx4eQyv8DL5bYU6"
+    },
+    {
+      "code": "H03",
+      "name": "Lạng Giang",
+      "province": "Bắc Ninh",
+      "sourceRow": 231,
+      "sourceSheet": "CỬA HÀNG TRUYỀN THỐNG",
+      "mapsUrl": "https://goo.gl/maps/vP1iHVRg1baGbi5R7"
+    },
+    {
+      "code": "H70",
+      "name": "Cao Lộc",
+      "province": "Lạng Sơn",
+      "sourceRow": 236,
+      "sourceSheet": "CỬA HÀNG TRUYỀN THỐNG",
+      "mapsUrl": "https://goo.gl/maps/YALTxygiStjdqLa28"
+    },
+    {
+      "code": "H77",
+      "name": "Hữu Lũng",
+      "province": "Lạng Sơn",
+      "sourceRow": 237,
+      "sourceSheet": "CỬA HÀNG TRUYỀN THỐNG",
+      "mapsUrl": "https://goo.gl/maps/76JwuZqTS4Mb27wB7"
+    },
+    {
+      "code": "H29",
+      "name": "Phú Bình",
+      "province": "Thái Nguyên",
+      "sourceRow": 268,
+      "sourceSheet": "CỬA HÀNG TRUYỀN THỐNG",
+      "mapsUrl": "https://goo.gl/maps/eHmnPFxNGtK4627bA"
+    },
+    {
+      "code": "N60",
+      "name": "Tân An",
+      "province": "Tây Ninh",
+      "sourceRow": 62,
+      "sourceSheet": "SIÊU THỊ HOA SEN HOME",
+      "mapsUrl": "https://goo.gl/maps/DYF3sydE15ambXkSA"
+    },
+    {
+      "code": "N63",
+      "name": "Thủ Đức",
+      "province": "Hồ Chí Minh",
+      "sourceRow": 68,
+      "sourceSheet": "SIÊU THỊ HOA SEN HOME",
+      "mapsUrl": "https://goo.gl/maps/RrKiQbmSqwqZp8tDA"
+    },
+    {
+      "code": "L44",
+      "name": "Đức Trọng",
+      "province": "Lâm Đồng",
+      "sourceRow": 89,
+      "sourceSheet": "SIÊU THỊ HOA SEN HOME",
+      "mapsUrl": "https://maps.app.goo.gl/K5gqRnEKwWy7H5Kn8"
+    },
+    {
+      "code": "M49",
+      "name": "Ngũ Hành Sơn",
+      "province": "Đà Nẵng",
+      "sourceRow": 136,
+      "sourceSheet": "SIÊU THỊ HOA SEN HOME",
+      "mapsUrl": "https://goo.gl/maps/qs7UYox13s175fTLA"
+    },
+    {
+      "code": "N79",
+      "name": "Bắc Giang",
+      "province": "Bắc Ninh",
+      "sourceRow": 164,
+      "sourceSheet": "SIÊU THỊ HOA SEN HOME",
+      "mapsUrl": "https://goo.gl/maps/xtBgwusyZwmCoXKK6"
+    },
+    {
+      "code": "H37",
+      "name": "Lục Nam",
+      "province": "Bắc Ninh",
+      "sourceRow": 165,
+      "sourceSheet": "SIÊU THỊ HOA SEN HOME",
+      "mapsUrl": "https://goo.gl/maps/o5iV1AY8E958JghU6"
+    }
+  ],
+  "unclassified": [],
+  "oldProvinceAliases": [
+    {
+      "code": "F63",
+      "sourceProvince": "Quảng Bình",
+      "province": "Quảng Trị"
+    },
+    {
+      "code": "G31",
+      "sourceProvince": "Hải Dương",
+      "province": "Hải Phòng"
+    },
+    {
+      "code": "C09",
+      "sourceProvince": "Long An",
+      "province": "Tây Ninh"
+    },
+    {
+      "code": "E22",
+      "sourceProvince": "Bình Phước",
+      "province": "Đồng Nai"
+    }
+  ]
+}

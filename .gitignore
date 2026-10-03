@@ -1,3 +1,5 @@
 __pycache__/
 *.pyc
 truck/vehicle_presets.json
+.vercel/
+.DS_Store

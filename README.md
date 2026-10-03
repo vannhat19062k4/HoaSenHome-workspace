@@ -1,11 +1,12 @@
 # Trung tâm công cụ Hoa Sen Home
 
-Một địa chỉ web có trang chọn công cụ và bốn công cụ hiện tại:
+Một địa chỉ web có trang chọn công cụ và năm công cụ hiện tại:
 
 - **Tồn kho theo định mức:** giữ nguyên `data.js` và `app.js` từ app được cung cấp. Dữ liệu người dùng tiếp tục lưu trong `localStorage` với khóa `hoasen_inventory_data`. Chức năng nhập Excel dùng bản SheetJS 0.20.3 giống app gốc, được lưu cục bộ để không phụ thuộc CDN khi chạy.
 - **Tối ưu tải xe V7:** phần thuật toán trong `truck/core.py` là bản sao nguyên văn từ `Truck_Loading_Optimizer_V7.py` (lưu ở `truck/original_v7.py`). Giao diện web mới gọi thuật toán Python trên cùng máy chủ. Bao gồm preset xe, 6 loại hàng, tấm phẳng, mục tiêu kg, ba chiến lược, chỉnh thủ công, bảng chi tiết và mô phỏng Plotly 3D.
 - **Dashboard kinh doanh:** chọn hoặc thả file báo cáo HĐKD .xlsx. Trang tự đọc lại file đã nhập ở công cụ tồn kho theo định mức; có nút đọc lại hoặc chọn file Excel khác. Dữ liệu được xử lý ngay trong trình duyệt, tự lấy kế hoạch tháng từ file và hiển thị tổng quan, tiến độ miền/tỉnh, nhóm hàng, tồn kho, kéo hàng và cửa hàng. File không được tải lên máy chủ.
 - **Kiểm tra kéo hàng:** đọc sheet `Chi tiết Cửa hàng` trong file Excel đã nhập tại công cụ tồn kho, hoặc cho phép chọn file báo cáo trực tiếp. Tên tỉnh, cửa hàng, mô hình lấy từ D, E, F; tồn kho lấy từ CP–FA. Người dùng tìm sản phẩm và nhập mức kg cho từng cửa hàng theo mô hình. Ba tab miền cho phép xem riêng kết quả từng miền; bảng kết quả nhóm cửa hàng theo tỉnh và có dòng tổng từng tỉnh. Tồn hiện tại được tính là số đã kéo; phần còn cần kéo của từng cửa hàng bằng `max(mức chia - tồn, 0)`. Tồn vượt ở cửa hàng khác không bù thiếu. Có thể tải file Excel gồm trang tổng hợp và chi tiết từng miền.
+- **Bản đồ cửa hàng & tổng kho:** lọc cửa hàng theo miền, tỉnh, loại; xem 9 tổng kho và liên kết cung ứng tới cửa hàng hoặc tỉnh. Chọn tổng kho để bật các đường nối cong; chọn cửa hàng để tra khoảng cách ô tô tham khảo. Công cụ ở `/map/`, dùng dữ liệu trong `map/data/` và cần mạng để tải bản đồ nền cùng dịch vụ định tuyến.
 
 File Excel mới nhập được lưu trong IndexedDB của trình duyệt để chia sẻ giữa công cụ tồn kho và công cụ kéo hàng. File không được tải lên máy chủ. Nếu dùng trình duyệt/thiết bị khác, cần nhập lại file.
 
@@ -14,7 +15,7 @@ Giao diện mặc định là tối. Nút Sáng/Tối ở thanh đầu trang lư
 ## Cấu trúc thư mục
 
 - `assets/`: giao diện và dữ liệu dùng chung, chế độ sáng/tối, logo Hoa Sen Home và logo Danny.
-- `inventory/`, `truck/`, `pull/`, `dashboard/`: bốn công cụ độc lập trong cùng website.
+- `inventory/`, `truck/`, `pull/`, `dashboard/`, `map/`: năm công cụ trong cùng website.
 - `api/`: các hàm máy chủ cho Vercel; `server.py`: máy chủ chạy trên Mac.
 - `tests/`: kiểm tra thuật toán tải xe và kết quả kéo hàng.
 

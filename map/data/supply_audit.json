@@ -1,0 +1,134 @@
+{
+  "assignments": 392,
+  "linked": 387,
+  "unmatched": [
+    {
+      "id": "nam-172",
+      "sourceRow": 172,
+      "region": "Nam",
+      "oldProvince": "Đắk Nông",
+      "province": "Lâm Đồng",
+      "name": "Đắk Song 2",
+      "model": "CHTT",
+      "primaryId": "dak-lak",
+      "storeId": null,
+      "match": "unmatched"
+    },
+    {
+      "id": "trung-74",
+      "sourceRow": 74,
+      "region": "Trung",
+      "oldProvince": "Bình Định",
+      "province": "Gia Lai",
+      "name": "Tây Sơn 2",
+      "model": "CHTT",
+      "primaryId": "binh-dinh",
+      "storeId": null,
+      "match": "unmatched"
+    },
+    {
+      "id": "bắc-65",
+      "sourceRow": 65,
+      "region": "Bắc",
+      "oldProvince": "Hải Phòng",
+      "province": "Hải Phòng",
+      "name": "Vĩnh Bảo",
+      "model": "CHTT",
+      "primaryId": "ha-nam",
+      "storeId": null,
+      "match": "unmatched"
+    },
+    {
+      "id": "bắc-84",
+      "sourceRow": 84,
+      "region": "Bắc",
+      "oldProvince": "Hà Nội",
+      "province": "Hà Nội",
+      "name": "Sóc Sơn",
+      "model": "CHTT",
+      "primaryId": "ha-nam",
+      "storeId": null,
+      "match": "unmatched"
+    },
+    {
+      "id": "bắc-90",
+      "sourceRow": 90,
+      "region": "Bắc",
+      "oldProvince": "Thái Bình",
+      "province": "Hưng Yên",
+      "name": "Hưng Hà",
+      "model": "CHTT",
+      "primaryId": "ha-nam",
+      "storeId": null,
+      "match": "unmatched"
+    }
+  ],
+  "warehouseCounts": {
+    "cai-cui": 65,
+    "binh-duong": 60,
+    "phan-thiet": 23,
+    "dak-lak": 38,
+    "binh-dinh": 42,
+    "da-nang": 42,
+    "nghe-an": 33,
+    "ha-nam": 66,
+    "yen-bai": 23
+  },
+  "regionCounts": {
+    "Nam": 158,
+    "Trung": 112,
+    "Bắc": 122
+  },
+  "unassignedStoreIds": [],
+  "modelConflicts": [
+    {
+      "sourceRow": 46,
+      "region": "Nam",
+      "name": "Vị Thủy",
+      "supplyModel": "3B",
+      "storeId": "traditional:A40",
+      "locationType": "traditional"
+    },
+    {
+      "sourceRow": 120,
+      "region": "Nam",
+      "name": "Bà Rịa 2",
+      "supplyModel": "CHTT",
+      "storeId": "home:L37",
+      "locationType": "home"
+    },
+    {
+      "sourceRow": 127,
+      "region": "Nam",
+      "name": "Đồng Phú",
+      "supplyModel": "CHTT",
+      "storeId": "home:N39",
+      "locationType": "home"
+    },
+    {
+      "sourceRow": 45,
+      "region": "Trung",
+      "name": "Krông Năng",
+      "supplyModel": "CHTT",
+      "storeId": "home:M09",
+      "locationType": "home"
+    },
+    {
+      "sourceRow": 65,
+      "region": "Trung",
+      "name": "Phù Cát",
+      "supplyModel": "CHTT",
+      "storeId": "home:F09",
+      "locationType": "home"
+    },
+    {
+      "sourceRow": 99,
+      "region": "Trung",
+      "name": "Đại Lộc",
+      "supplyModel": "CHTT",
+      "storeId": "home:M32",
+      "locationType": "home"
+    }
+  ],
+  "note": "Warehouse pins are reference points for the named industrial park/port/area, not verified warehouse gates. Driving distance is calculated on demand in the app; trucking restrictions are not modeled."
+}
