@@ -71,6 +71,9 @@ for sheet,type_id in [(wb.worksheets[0],'traditional'),(wb.worksheets[1],'home')
         if not code or not (clean(v[5]) or clean(v[6])): continue
         address=clean(v[15]); prov,raw_prov=province(address)
         lat,lon,coord_source=coords(v[16])
+        # This URL supplies a map viewport center outside Đắk Lắk, not the store location.
+        if type_id=='home' and code=='E46' and coord_source=='google_maps_view':
+            lat,lon,coord_source=None,None,'map_view_outside_province'
         maps=clean(v[16]); maps=maps if maps.startswith(('https://','http://')) else ''
         if not maps and lat is not None: maps=f'https://www.google.com/maps?q={lat},{lon}'
         result.append({

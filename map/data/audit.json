@@ -44,10 +44,11 @@
   },
   "coordinateSources": {
     "google_maps_dms": 355,
-    "google_maps_view": 17,
+    "google_maps_view": 16,
     "unresolved_short_link": 11,
     "google_maps_route_destination": 1,
-    "google_maps_query": 3
+    "google_maps_query": 3,
+    "map_view_outside_province": 1
   },
   "unlocated": [
     {
@@ -113,6 +114,14 @@
       "sourceRow": 89,
       "sourceSheet": "SIÊU THỊ HOA SEN HOME",
       "mapsUrl": "https://maps.app.goo.gl/K5gqRnEKwWy7H5Kn8"
+    },
+    {
+      "code": "E46",
+      "name": "Buôn Ma Thuột 3",
+      "province": "Đắk Lắk",
+      "sourceRow": 112,
+      "sourceSheet": "SIÊU THỊ HOA SEN HOME",
+      "mapsUrl": "https://www.google.com/maps/d/u/0/edit?mid=1gDmQDIeIqtyPRS6xIMoBYi1cWChLW1pJ&ll=12.804868896417414%2C107.28341892249105&z=9"
     },
     {
       "code": "M49",

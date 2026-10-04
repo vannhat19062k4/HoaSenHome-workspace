@@ -47,13 +47,17 @@ Các sheet còn lại là dữ liệu phụ, không được đưa vào ứng d�
 
 ## Chất lượng vị trí
 
-- 387 cửa hàng thuộc 31 tỉnh/thành: miền Nam 157, miền Trung 111, miền Bắc 119. Có 376 cửa hàng trích xuất được tọa độ từ link Maps.
-- 355 tọa độ từ chuỗi độ/phút/giây trong link Maps; 3 từ truy vấn tọa độ; 1 từ điểm đến của link chỉ đường; 17 từ tâm khung xem Maps.
-- 11 link rút gọn chưa thể giải trong môi trường xử lý. Các cửa hàng này vẫn có trong bộ lọc và danh sách, cùng link Maps gốc; ứng dụng không tạo ghim ước đoán.
+- 387 cửa hàng thuộc 31 tỉnh/thành: miền Nam 157, miền Trung 111, miền Bắc 119. Có 375 cửa hàng được đặt ghim.
+- 355 tọa độ từ chuỗi độ/phút/giây trong link Maps; 3 từ truy vấn tọa độ; 1 từ điểm đến của link chỉ đường; 16 từ tâm khung xem Maps.
+- 11 link rút gọn chưa thể giải trong môi trường xử lý. CH Buôn Ma Thuột 3 (`E46`) có link chỉ chứa tâm khung xem Maps nằm ngoài Đắk Lắk; ứng dụng không đặt ghim sai vị trí cho CH này. Cả 12 cửa hàng vẫn có trong bộ lọc và danh sách, cùng link Maps gốc.
 - Vòng tròn tổng hợp trên bản đồ đếm **toàn bộ cửa hàng** của miền/tỉnh; số “ghim” đếm riêng các cửa hàng có tọa độ. Với tỉnh không có cửa hàng nào xác định được tọa độ, cửa hàng vẫn nằm trong danh sách nhưng không có vòng tròn đặt theo vị trí đoán.
 - Bốn địa chỉ còn tên tỉnh cũ được quy về tỉnh sau sắp xếp năm 2025: Quảng Bình → Quảng Trị, Hải Dương → Hải Phòng, Long An → Tây Ninh, Bình Phước → Đồng Nai. Địa chỉ gốc vẫn được giữ nguyên trong popup. Tham chiếu: [Cổng Thông tin điện tử Chính phủ](https://xaydungchinhsach.chinhphu.vn/chi-tiet-34-don-vi-hanh-chinh-cap-tinh-tu-12-6-2025-119250612141845533.htm).
 - Miền lấy theo các phần miền trong workbook nguồn. Vì vậy Thanh Hóa, Nghệ An và Hà Tĩnh nằm trong **Miền Bắc** theo cách phân nhóm của file.
 - Hoàng Sa và Trường Sa được hiển thị bằng nhãn tham chiếu trên bản đồ và sơ đồ góc màn hình. Đây là chỉ dẫn vị trí, không phải ranh giới hay hình học quần đảo.
+
+## Viền tỉnh và phạm vi kho
+
+Bản đồ dùng đường viền của **34 tỉnh/thành sau sắp xếp 2025**, lấy từ [bộ GeoJSON địa giới](https://github.com/thanglequoc/vietnamese-provinces-database/tree/8b78ba5118715e1fa81769286724db79346abf52/dataset-generation-scripts/resources/gis/geojson_11Mar2026) dẫn nguồn [Bản đồ hành chính Việt Nam](https://sapnhap.bando.com.vn/). Viền tỉnh giữ nguyên hình học nguồn; viền miền và kho được ghép từ các tỉnh, giản lược ở mức hiển thị bản đồ. Khi chọn miền, đường viền hiển thị nhóm miền theo file cửa hàng; ba tỉnh không có CH trong file được phân nhóm theo vị trí địa lý. Khi chọn kho, phần tô màu thể hiện **tỉnh có ít nhất một CH do kho phụ trách chính**, không khẳng định cả tỉnh chỉ thuộc kho đó. Khi chọn tỉnh, viền đỏ và mức zoom đưa toàn tỉnh vào khung nhìn. Đường viền không thể hiện ranh giới Hoàng Sa, Trường Sa hoặc địa giới pháp lý chi tiết.
 
 ## Đối chiếu số lượng cửa hàng
 

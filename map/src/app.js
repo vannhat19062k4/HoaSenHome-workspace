@@ -11,6 +11,8 @@ const collator = new Intl.Collator('vi');
 const kgFormat = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 });
 let inventory = null;
 let map, markerLayer, warehouseLayer, connectionLayer, connectionRenderer, markerById = new Map(), warehouseMarkerById = new Map();
+let areaBoundaryLayer, provinceBoundaryLayer, provinceBoundaryData = null;
+const provinceBoundaryByName = new Map(), coverageBoundaryByKey = new Map(), provincePathByName = new Map();
 const defaultWarehousePoints = new Map(supply.warehouses.map(w => [w.id, {lat:w.lat,lng:w.lng,coordinateStatus:w.coordinateStatus}]));
 const routeCache = new Map();
 let routeQueue = Promise.resolve(), lastRouteRequest = 0;
@@ -75,8 +77,9 @@ root.innerHTML = `
     <main class="map-panel">
       <div id="map" class="map-canvas" aria-label="Bản đồ vị trí cửa hàng"></div>
       <div class="map-topbar"><a class="hub-link" href="/" aria-label="Về trung tâm công cụ" title="Về trung tâm công cụ">⌂ <span class="hub-link-text">Công cụ</span></a><button class="mobile-list-button" id="mobile-list">☰ Danh sách</button><div class="map-title"><span class="eyebrow">BẢN ĐỒ MẠNG LƯỚI</span><strong id="map-area">Toàn quốc</strong></div><div class="map-top-actions"><button id="map-connections" aria-pressed="false">Đường nối: Tắt</button><div class="map-caption" id="map-caption"></div></div></div>
-      <div class="map-legend"><span><i class="legend-dot traditional"></i>Cửa hàng truyền thống <b id="traditional-count"></b></span><span><i class="legend-dot home"></i>Hoa Sen Home <b id="home-count"></b></span><span><i class="legend-dot warehouse"></i>Tổng kho <b id="warehouse-count"></b></span></div>
+      <div class="map-legend"><span><i class="legend-dot traditional"></i>Cửa hàng truyền thống <b id="traditional-count"></b></span><span><i class="legend-dot home"></i>Hoa Sen Home <b id="home-count"></b></span><span><i class="legend-dot warehouse"></i>Tổng kho <b id="warehouse-count"></b></span><span id="boundary-legend"><i class="legend-boundary"></i>Viền tỉnh</span></div>
       <div class="island-inset" aria-label="Vị trí tham chiếu Hoàng Sa và Trường Sa"><span class="inset-label">QUẦN ĐẢO VIỆT NAM</span><div class="island island-hoangsa"><i></i>Hoàng Sa</div><div class="island island-truongsa"><i></i>Trường Sa</div><small>Sơ đồ vị trí, không thể hiện ranh giới</small></div>
+      <div class="boundary-credit">Ranh giới tỉnh 2025 · <a href="https://sapnhap.bando.com.vn/" target="_blank" rel="noopener noreferrer">Bản đồ hành chính Việt Nam</a></div>
       <div id="detail-container"></div><div id="map-note"></div>
     </main>
   </div>`;
@@ -94,6 +97,73 @@ function storeStock(store) { return inventory?.storeById.get(store.id) || null; 
 function warehouseStock(warehouse) { return inventory?.warehouseById.get(warehouse.id) || null; }
 function primaryStore(store, warehouseId) { return assignmentsByStore.get(store.id)?.primaryId === warehouseId; }
 function sumStoreKg(items) { return items.reduce((sum, store) => sum + (storeStock(store)?.kg || 0), 0); }
+function availableProvinceNames() {
+  if (inventory && !state.warehouse) return new Set();
+  return new Set(stores.filter(s =>
+    (state.region === 'Tất cả' || s.region === state.region) &&
+    (!state.warehouse || primaryStore(s,state.warehouse) || (!inventory && assignmentsByStore.get(s.id)?.alternateIds.includes(state.warehouse)))
+  ).map(s => s.province));
+}
+function renderBoundaries() {
+  if (!map || !provinceBoundaryData) return;
+  areaBoundaryLayer.clearLayers();
+  const areaKey = state.warehouse ?
+    (state.region === 'Tất cả' ? `warehouse:${state.warehouse}` : `warehouse-region:${state.warehouse}:${state.region}`) :
+    (state.region === 'Tất cả' ? '' : `region:${state.region}`);
+  const area = coverageBoundaryByKey.get(areaKey);
+  const legend=document.getElementById('boundary-legend');
+  legend.innerHTML=state.province?'<i class="legend-boundary selected"></i>Tỉnh đang chọn':
+    state.warehouse?'<i class="legend-boundary warehouse"></i>Tỉnh có CH của kho':
+    state.region!=='Tất cả'?'<i class="legend-boundary region"></i>Viền miền theo CH':
+    '<i class="legend-boundary"></i>Viền tỉnh';
+  if (area) window.L.geoJSON(area, {
+    pane:'areaBoundaryPane', interactive:false,
+    style:{color:state.warehouse?'#a86612':'#176d8a',weight:3,opacity:.95,
+      fillColor:state.warehouse?'#f3a537':'#338fab',fillOpacity:state.warehouse ? .13 : .09}
+  }).addTo(areaBoundaryLayer);
+  for (const [name,path] of provincePathByName) {
+    const selected = name === state.province;
+    path.setStyle({color:selected?'#d11f32':'#526f7a',weight:selected?3.2:1,
+      opacity:selected?1:.72,fillColor:'#d11f32',fillOpacity:selected?.17:0});
+    if (selected) path.bringToFront();
+  }
+}
+async function loadBoundaries() {
+  try {
+    const responses = await Promise.all([
+      fetch('./data/provinces-2025.geojson'),fetch('./data/coverage-2025.geojson')
+    ]);
+    if (responses.some(response => !response.ok)) throw new Error('Không tải được ranh giới tỉnh.');
+    const [provinces,coverage] = await Promise.all(responses.map(response => response.json()));
+    if (provinces.features?.length !== 34 || coverage.features?.length !== 22) throw new Error('Dữ liệu ranh giới chưa đầy đủ.');
+    provinceBoundaryData = provinces;
+    for (const feature of provinces.features) provinceBoundaryByName.set(feature.properties.name,feature);
+    for (const feature of coverage.features) coverageBoundaryByKey.set(`${feature.properties.kind}:${feature.properties.id}`,feature);
+    if (provinceBoundaryByName.size !== 34 || stores.some(store => !provinceBoundaryByName.has(store.province)) ||
+      supply.warehouses.some(warehouse => !coverageBoundaryByKey.has(`warehouse:${warehouse.id}`))) {
+      throw new Error('Ranh giới không khớp danh sách tỉnh và tổng kho.');
+    }
+    window.L.geoJSON(provinces, {
+      pane:'provinceBoundaryPane',style:{color:'#526f7a',weight:1,opacity:.72,fillOpacity:0},
+      onEachFeature(feature,path) {
+        const name=feature.properties.name;
+        provincePathByName.set(name,path);
+        path.bindTooltip(name,{sticky:true});
+        path.on('click',()=>{
+          if (!availableProvinceNames().has(name)) return;
+          state.province=name;state.selected=null;
+          if (inventory && state.warehouse) state.connectionTarget='stores';
+          updateProvinceOptions();render();fitArea();
+        });
+      }
+    }).addTo(provinceBoundaryLayer);
+    renderBoundaries();
+    if (state.province || state.warehouse || state.region !== 'Tất cả') fitArea();
+  } catch (error) {
+    document.querySelector('.boundary-credit').textContent='Chưa tải được ranh giới tỉnh';
+    console.warn(error);
+  }
+}
 function productRows(stock) {
   if (!stock?.products.size) return '<p class="inventory-empty">Không có sản phẩm trong file này.</p>';
   return [...stock.products.values()].sort((a,b) => b.kg - a.kg || collator.compare(a.name,b.name)).map(product =>
@@ -320,7 +390,8 @@ function render() {
   renderInventoryStatus();
   renderWarehouseSummary();
   renderDetail();
-  document.getElementById('map-note').innerHTML = !state.selected && visible.length > mapped ? `<div class="map-note">${visible.length - mapped} cửa hàng có link Maps nhưng chưa trích xuất được tọa độ; vẫn có trong danh sách.</div>` : '';
+  renderBoundaries();
+  document.getElementById('map-note').innerHTML = !state.selected && visible.length > mapped ? `<div class="map-note">${visible.length - mapped} cửa hàng chưa có tọa độ tin cậy; vẫn có trong danh sách và giữ link Maps.</div>` : '';
   updateMarkers(visible);
   updateWarehouseMarkers();
   updateConnectionLines(visible);
@@ -469,6 +540,17 @@ function fitArea() {
   if (state.region === 'Tất cả' && !state.province && !state.warehouse) {
     map.flyToBounds([[7.7,102.3],[23.8,115.1]], { padding:[24,24], duration:.75 }); return;
   }
+  const areaKey=state.warehouse ?
+    (state.region === 'Tất cả' ? `warehouse:${state.warehouse}` : `warehouse-region:${state.warehouse}:${state.region}`) :
+    `region:${state.region}`;
+  const boundaryFeature = state.province ? provinceBoundaryByName.get(state.province) : coverageBoundaryByKey.get(areaKey);
+  if (boundaryFeature) {
+    const bounds=window.L.geoJSON(boundaryFeature).getBounds();
+    const w=warehouseById.get(state.warehouse);
+    if (!state.province && located(w)) bounds.extend([w.lat,w.lng]);
+    map.flyToBounds(bounds,{padding:[48,48],maxZoom:state.province?10:8,duration:.75});
+    return;
+  }
   const areaStores = filteredStores().filter(s=>s.lat!==null);
   if (!areaStores.length) return;
   const points=areaStores.map(s => [s.lat,s.lng]);
@@ -527,9 +609,13 @@ function initMap() {
   const L = window.L;
   map = L.map('map', { zoomControl:false, preferCanvas:true, minZoom:4, maxZoom:17 });
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors', maxZoom:19 }).addTo(map);
+  map.createPane('areaBoundaryPane').style.zIndex=350;
+  map.createPane('provinceBoundaryPane').style.zIndex=360;
   L.control.zoom({ position:'bottomright' }).addTo(map);
   map.fitBounds([[7.7,102.3],[23.8,115.1]], { padding:[24,24] });
   markerLayer = L.layerGroup().addTo(map);
+  areaBoundaryLayer = L.layerGroup().addTo(map);
+  provinceBoundaryLayer = L.layerGroup().addTo(map);
   connectionRenderer=L.svg({padding:.5});
   connectionLayer = L.layerGroup().addTo(map);
   warehouseLayer = L.layerGroup().addTo(map);
@@ -540,6 +626,7 @@ function initMap() {
   updateMarkers(filteredStores());
   updateWarehouseMarkers();
   updateConnectionLines(filteredStores());
+  loadBoundaries();
 }
 
 document.getElementById('regions').addEventListener('click', e => {
