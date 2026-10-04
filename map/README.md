@@ -1,6 +1,14 @@
 # Bản đồ cửa hàng và tổng kho Hoa Sen
 
-MVP hiển thị vị trí cửa hàng và phân công tổng kho. Chưa có dữ liệu tồn kho, sản phẩm hoặc SKU.
+MVP hiển thị vị trí cửa hàng, phân công tổng kho và tồn kho từ file Excel nhập riêng.
+
+## Nhập tồn kho
+
+Chọn **Nhập file tồn kho Excel** trên bản đồ. File được đọc trong trình duyệt, không gửi lên máy chủ và không lưu vào mã nguồn. Mỗi lần chọn file mới sẽ thay dữ liệu tồn kho đang xem.
+
+File mẫu có hai sheet `HTPP` (cửa hàng) và `NM` (tổng kho). Ứng dụng tìm dòng tiêu đề của mỗi sheet, đọc `TỈNH/KG/NM`, `OU CH quản lý kho`, `Mã chi nhánh KTQT`, `Tên kho`, `Mã hàng`, `Tên hàng`, `ĐVT1` và `SL1`. Chỉ lấy dòng có đơn vị `Kg`; nhiều dòng cùng mã hàng tại một địa điểm được cộng lại. Số tồn tại kho và số tồn tại cửa hàng được hiển thị riêng, không cộng gộp. Tỉnh và cửa hàng được ghép với bản đồ theo tên đã chuẩn hóa; mỗi cửa hàng chỉ thuộc tổng kho **chính** trong phép tổng hợp để tránh đếm trùng kho dự phòng.
+
+Sau khi nhập, danh sách chuyển thành **Tổng kho → Tỉnh → Cửa hàng**. Chọn kho để xem tồn riêng của kho và tồn của các tỉnh được kho phụ trách; chọn tỉnh để xem từng cửa hàng; chọn cửa hàng để xem khối lượng từng mã hàng. Bản đồ cũng hiện số tồn tổng hợp theo miền hoặc tỉnh tùy mức zoom. Mục **Cần đối chiếu** giữ các cửa hàng và tổng kho trong file chưa ghép được với dữ liệu vị trí; không tự phân bổ lượng tồn của chúng vào địa điểm khác.
 
 ## Chạy ứng dụng
 

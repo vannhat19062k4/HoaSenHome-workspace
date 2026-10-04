@@ -8,6 +8,8 @@ const state = { region: 'Tất cả', province: '', type: 'all', search: '', sel
   warehouse: '', showConnections: false, connectionTarget: 'stores' };
 const number = new Intl.NumberFormat('vi-VN');
 const collator = new Intl.Collator('vi');
+const kgFormat = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 });
+let inventory = null;
 let map, markerLayer, warehouseLayer, connectionLayer, connectionRenderer, markerById = new Map(), warehouseMarkerById = new Map();
 const defaultWarehousePoints = new Map(supply.warehouses.map(w => [w.id, {lat:w.lat,lng:w.lng,coordinateStatus:w.coordinateStatus}]));
 const routeCache = new Map();
@@ -36,6 +38,12 @@ root.innerHTML = `
           <div class="metric"><strong>${new Set(stores.map(s => s.province)).size}</strong><span>Tỉnh / thành</span></div>
           <div class="metric"><strong>${stores.filter(s => s.lat !== null).length}</strong><span>Có tọa độ</span></div>
         </div>
+        <section class="inventory-import" aria-label="Nhập tồn kho riêng">
+          <div class="eyebrow">TỒN KHO THỰC TẾ</div>
+          <label class="inventory-upload" for="inventory-file">＋ Nhập file tồn kho Excel</label>
+          <input id="inventory-file" type="file" accept=".xlsx,.xls" aria-label="Chọn file tồn kho có hai sheet HTPP và NM">
+          <div id="inventory-status" class="inventory-status" aria-live="polite">Chưa nhập file tồn kho. Dữ liệu chỉ được đọc trên trình duyệt này.</div>
+        </section>
         <div class="filters">
           <label class="field-label" for="search">Tìm cửa hàng</label>
           <div class="search-wrap"><span aria-hidden="true">⌕</span><input id="search" placeholder="Tên, mã CH hoặc địa chỉ..." autocomplete="off"></div>
@@ -76,6 +84,31 @@ root.innerHTML = `
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[ch]);
 }
+function formatKg(value) { return `${kgFormat.format(value || 0)} kg`; }
+function compactKg(value) { return value >= 1000 ? `${kgFormat.format(value / 1000)} t` : formatKg(value); }
+function storeStock(store) { return inventory?.storeById.get(store.id) || null; }
+function warehouseStock(warehouse) { return inventory?.warehouseById.get(warehouse.id) || null; }
+function primaryStore(store, warehouseId) { return assignmentsByStore.get(store.id)?.primaryId === warehouseId; }
+function sumStoreKg(items) { return items.reduce((sum, store) => sum + (storeStock(store)?.kg || 0), 0); }
+function productRows(stock) {
+  if (!stock?.products.size) return '<p class="inventory-empty">Không có sản phẩm trong file này.</p>';
+  return [...stock.products.values()].sort((a,b) => b.kg - a.kg || collator.compare(a.name,b.name)).map(product =>
+    `<div class="inventory-product"><div><strong>${escapeHtml(product.name)}</strong><small>${escapeHtml(product.sku)}</small></div><b>${formatKg(product.kg)}</b></div>`
+  ).join('');
+}
+function renderInventoryStatus() {
+  const target = document.getElementById('inventory-status');
+  if (!inventory) return;
+  const unmatchedStores = [...inventory.unmatchedStores.values()].sort((a,b)=>b.kg-a.kg);
+  const unmatchedWarehouses = [...inventory.unmatchedWarehouses.values()].sort((a,b)=>b.kg-a.kg);
+  target.innerHTML = `<strong>${escapeHtml(inventory.fileName)}</strong>
+    <span>CH: ${formatKg(inventory.storeKg)} · Tổng kho: ${formatKg(inventory.warehouseKg)}</span>
+    <span>Đã ghép ${inventory.storeById.size} CH trên bản đồ.</span>
+    ${unmatchedStores.length || unmatchedWarehouses.length || inventory.skippedRows ? `<details class="inventory-audit"><summary>Cần đối chiếu: ${unmatchedStores.length} CH, ${unmatchedWarehouses.length} tổng kho${inventory.skippedRows ? `, ${inventory.skippedRows} dòng bỏ qua` : ''}</summary>
+      ${unmatchedStores.map(item=>`<p>CH ${escapeHtml(item.label)}: ${formatKg(item.kg)}</p>`).join('')}
+      ${unmatchedWarehouses.map(item=>`<p>Kho ${escapeHtml(item.label)}: ${formatKg(item.kg)} (chưa có ghim)</p>`).join('')}
+    </details>` : ''}`;
+}
 function normalize(value) {
   return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').toLowerCase();
 }
@@ -85,12 +118,15 @@ function filteredStores() {
     (state.region === 'Tất cả' || s.region === state.region) &&
     (!state.province || s.province === state.province) &&
     (state.type === 'all' || s.type === state.type) &&
-    (!state.warehouse || assignmentsByStore.get(s.id)?.primaryId === state.warehouse || assignmentsByStore.get(s.id)?.alternateIds.includes(state.warehouse)) &&
+    (!state.warehouse || primaryStore(s,state.warehouse) || (!inventory && assignmentsByStore.get(s.id)?.alternateIds.includes(state.warehouse))) &&
     (!q || normalize([s.name, s.code, s.address, s.province].join(' ')).includes(q))
   );
 }
 function updateProvinceOptions() {
-  const provinces = [...new Set(stores.filter(s => state.region === 'Tất cả' || s.region === state.region).map(s => s.province))].sort(collator.compare);
+  const provinces = [...new Set(stores.filter(s =>
+    (state.region === 'Tất cả' || s.region === state.region) &&
+    (!state.warehouse || (inventory ? primaryStore(s,state.warehouse) : primaryStore(s,state.warehouse) || assignmentsByStore.get(s.id)?.alternateIds.includes(state.warehouse)))
+  ).map(s => s.province))].sort(collator.compare);
   document.getElementById('province').innerHTML = `<option value="">Tất cả tỉnh / thành</option>` + provinces.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
   document.getElementById('province').value = state.province;
 }
@@ -154,7 +190,9 @@ function renderWarehouseSummary() {
   const w = warehouseById.get(state.warehouse);
   if (!w) {
     const unlinked = supply.assignments.filter(a => !a.storeId);
-    target.innerHTML = `<strong>${supply.warehouses.length} tổng kho · ${supply.assignments.length} phân công</strong><small>${unlinked.length} dòng chưa có ghim trong file vị trí: ${escapeHtml(unlinked.map(a=>a.name).join(', '))}.</small>`;
+    target.innerHTML = `<strong>${supply.warehouses.length} tổng kho · ${supply.assignments.length} phân công</strong>
+      ${inventory ? `<small>Tồn tại các tổng kho trong file: ${formatKg(inventory.warehouseKg)} · tại CH: ${formatKg(inventory.storeKg)}. Hai nguồn tồn được tính riêng.</small>` : ''}
+      <small>${unlinked.length} dòng chưa có ghim trong file vị trí: ${escapeHtml(unlinked.map(a=>a.name).join(', '))}.</small>`;
     return;
   }
   const rows = supply.assignments.filter(a => a.primaryId === w.id);
@@ -164,6 +202,7 @@ function renderWarehouseSummary() {
   const linkedStores=filteredStores();
   const mappedStores=linkedStores.filter(s=>s.lat!==null).length;
   target.innerHTML = `<strong>${escapeHtml(w.name)}</strong><small>${rows.length} CH chính · ${alternate.length} CH dự phòng · ${provinces} tỉnh/thành</small>
+    ${inventory ? `<small class="inventory-warehouse-totals">Tồn tại kho: ${warehouseStock(w) ? formatKg(warehouseStock(w).kg) : 'không có dòng trong file'} · CH phụ trách chính: ${formatKg(sumStoreKg(linkedStores))}</small>` : ''}
     <small class="connection-status">${state.showConnections ? `Đang nối ${mappedStores}/${linkedStores.length} CH có tọa độ` : 'Đường nối đang tắt'}</small>
     ${sourceOnly.length ? `<small class="source-only">Chưa có ghim: ${escapeHtml(sourceOnly.map(a=>a.name).join(', '))}</small>` : ''}
     <p>${escapeHtml(w.address)}</p>
@@ -187,6 +226,42 @@ function parseWarehousePoint(input) {
 }
 function renderList(visible) {
   const container = document.getElementById('store-list');
+  if (inventory) {
+    const warehouse = warehouseById.get(state.warehouse);
+    const crumbs = `<div class="inventory-breadcrumb"><button data-hierarchy-root>Tổng kho</button>${warehouse ? ` <span>›</span> <button data-hierarchy-warehouse>${escapeHtml(warehouse.name)}</button>` : ''}${state.province ? ` <span>›</span> <b>${escapeHtml(state.province)}</b>` : ''}</div>`;
+    if (!warehouse) {
+      const cards = supply.warehouses.map(w => {
+        const assigned = visible.filter(s => primaryStore(s,w.id));
+        const own = warehouseStock(w);
+        return `<button class="inventory-step" data-warehouse="${escapeHtml(w.id)}"><span class="inventory-step-icon">▣</span><span class="inventory-step-main"><strong>${escapeHtml(w.name)}</strong><small>Tại kho: ${own ? formatKg(own.kg) : 'không có dòng trong file'}</small><small>CH phụ trách: ${formatKg(sumStoreKg(assigned))} · ${assigned.length} CH</small></span><span class="store-chevron">›</span></button>`;
+      }).join('');
+      const unlinked = [...inventory.unmatchedWarehouses.values()].sort((a,b)=>b.kg-a.kg);
+      container.innerHTML = crumbs + cards + (unlinked.length ? `<div class="inventory-unmapped"><strong>Tổng kho trong file chưa có ghim</strong>${unlinked.map(item => `<details><summary>${escapeHtml(item.label)} · ${formatKg(item.kg)}</summary><div class="inventory-product-list">${productRows(item)}</div></details>`).join('')}</div>` : '');
+      return;
+    }
+    if (!state.province) {
+      const groups = new Map();
+      for (const store of visible) {
+        if (!groups.has(store.province)) groups.set(store.province, []);
+        groups.get(store.province).push(store);
+      }
+      const own = warehouseStock(warehouse);
+      const ownStock = `<details class="inventory-own-stock"><summary><strong>Tồn tại ${escapeHtml(warehouse.name)}</strong><b>${own ? formatKg(own.kg) : 'không có dòng trong file'}</b></summary><div class="inventory-product-list">${productRows(own)}</div></details>`;
+      const provinces = [...groups.entries()].sort(([a],[b])=>collator.compare(a,b)).map(([province, group]) =>
+        `<button class="inventory-step" data-province="${escapeHtml(province)}"><span class="inventory-step-icon province">⌖</span><span class="inventory-step-main"><strong>${escapeHtml(province)}</strong><small>Tồn tại CH: ${formatKg(sumStoreKg(group))} · ${group.length} CH</small></span><span class="store-chevron">›</span></button>`
+      ).join('');
+      container.innerHTML = crumbs + ownStock + provinces + (!provinces ? '<div class="empty-state">Không có cửa hàng thuộc tổng kho này theo bộ lọc.</div>' : '');
+      return;
+    }
+    container.innerHTML = crumbs + (visible.length ? visible.map(store => {
+      const stock = storeStock(store);
+      return `<button class="store-row ${state.selected === store.id ? 'selected' : ''}" data-store="${escapeHtml(store.id)}">
+        <span class="store-icon ${store.type}">${store.type === 'home' ? 'H' : 'S'}</span>
+        <span class="store-text"><strong>${escapeHtml(store.name)}</strong><small>${escapeHtml(store.code)} · ${stock ? formatKg(stock.kg) : 'chưa có dòng tồn kho'}</small></span>
+        <span class="store-chevron">›</span></button>`;
+    }).join('') : '<div class="empty-state">Không có cửa hàng thuộc tỉnh này theo bộ lọc.</div>');
+    return;
+  }
   container.innerHTML = visible.length ? visible.map(s => `
     <button class="store-row ${state.selected === s.id ? 'selected' : ''}" data-store="${escapeHtml(s.id)}">
       <span class="store-icon ${s.type}">${s.type === 'home' ? 'H' : 'S'}</span>
@@ -203,10 +278,12 @@ function renderDetail() {
   const warehouse = assignment && warehouseById.get(assignment.primaryId);
   const routeWarehouse = warehouseById.get(state.warehouse) || warehouse;
   const alternateNames = assignment?.alternateIds.map(id => warehouseById.get(id)?.name).filter(Boolean) || [];
+  const stock = storeStock(s);
   target.innerHTML = `<div class="detail-card">
     <button class="detail-close" id="detail-close" aria-label="Đóng chi tiết">×</button>
     <div class="detail-eyebrow"><span class="small-dot ${s.type}"></span>${typeLabel[s.type]} · ${escapeHtml(s.code)}</div>
     <h2>${escapeHtml(s.name)}</h2>
+    ${inventory ? `<div class="inventory-detail"><strong>Tồn tại cửa hàng: ${stock ? formatKg(stock.kg) : 'không có dòng trong file'}</strong><span>${stock?.products.size || 0} mã hàng</span><div class="inventory-product-list">${productRows(stock)}</div></div>` : ''}
     <div class="detail-line"><span>Địa chỉ</span><strong>${escapeHtml(s.address)}</strong></div>
     <div class="detail-line"><span>Miền / tỉnh</span><strong>${escapeHtml(s.region)} / ${escapeHtml(s.province)}</strong></div>
     ${warehouse ? `<div class="detail-line"><span>Tổng kho chính</span><strong>${escapeHtml(warehouse.name)}</strong></div>` : ''}
@@ -223,17 +300,20 @@ function renderDetail() {
   if (routeWarehouse && located(routeWarehouse) && s.lat!==null) showRoadDistance(routeWarehouse,s);
 }
 function render() {
+  document.body.classList.toggle('inventory-mode', Boolean(inventory));
   const visible = filteredStores();
   const mapped = visible.filter(s => s.lat !== null).length;
   const traditional = visible.filter(s => s.type === 'traditional').length;
   updateControls();
-  document.getElementById('result-total').textContent = `${number.format(visible.length)} cửa hàng`;
-  document.getElementById('pin-total').textContent = `${mapped} ghim`;
-  document.getElementById('map-caption').textContent = `${number.format(visible.length)} địa điểm đang hiển thị`;
+  const provinceCount = new Set(visible.map(s=>s.province)).size;
+  document.getElementById('result-total').textContent = inventory ? (!state.warehouse ? `${supply.warehouses.length} tổng kho` : !state.province ? `${provinceCount} tỉnh / thành` : `${visible.length} cửa hàng`) : `${number.format(visible.length)} cửa hàng`;
+  document.getElementById('pin-total').textContent = inventory ? formatKg(sumStoreKg(visible)) : `${mapped} ghim`;
+  document.getElementById('map-caption').textContent = inventory ? `Tồn CH: ${formatKg(sumStoreKg(visible))}` : `${number.format(visible.length)} địa điểm đang hiển thị`;
   document.getElementById('traditional-count').textContent = traditional;
   document.getElementById('home-count').textContent = visible.length - traditional;
   document.getElementById('warehouse-count').textContent = supply.warehouses.filter(located).length + '/' + supply.warehouses.length;
   renderList(visible);
+  renderInventoryStatus();
   renderWarehouseSummary();
   renderDetail();
   document.getElementById('map-note').innerHTML = !state.selected && visible.length > mapped ? `<div class="map-note">${visible.length - mapped} cửa hàng có link Maps nhưng chưa trích xuất được tọa độ; vẫn có trong danh sách.</div>` : '';
@@ -250,7 +330,7 @@ function updateWarehouseMarkers() {
     const glyph='<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 13 16 5l12 8v14H4V13Zm4 2v8h4v-8H8Zm7 0v8h4v-8h-4Zm7 0v8h3v-8h-3Z" fill="currentColor"/></svg>';
     const icon = L.divIcon({className:'warehouse-icon',html:`<span class="warehouse-pin">${glyph}</span><span class="warehouse-pin-label">${escapeHtml(w.name.replace(/^TK /,''))}</span>`,iconSize:[58,70],iconAnchor:[29,29],popupAnchor:[0,-30]});
     const marker = L.marker([w.lat,w.lng],{icon,title:w.name,zIndexOffset:1000});
-    marker.bindPopup(`<strong>${escapeHtml(w.name)}</strong><p>${escapeHtml(w.address)}</p><small>${w.coordinateStatus==='area_reference'?'Điểm tham chiếu khu vực; cần xác minh cổng kho.':'Tọa độ đã nhập.'}</small>`);
+    marker.bindPopup(`<strong>${escapeHtml(w.name)}</strong>${inventory ? `<p>Tồn tại kho: ${warehouseStock(w) ? formatKg(warehouseStock(w).kg) : 'không có dòng trong file'}</p>` : ''}<p>${escapeHtml(w.address)}</p><small>${w.coordinateStatus==='area_reference'?'Điểm tham chiếu khu vực; cần xác minh cổng kho.':'Tọa độ đã nhập.'}</small>`);
     marker.on('click',()=>{chooseWarehouse(w.id);setTimeout(()=>warehouseMarkerById.get(w.id)?.openPopup(),100);});
     marker.addTo(warehouseLayer);
     warehouseMarkerById.set(w.id,marker);
@@ -322,6 +402,11 @@ function popupNode(s) {
     supplyLine.textContent=`Tổng kho chính: ${warehouse.name}`;
     box.append(supplyLine);
   }
+  if (inventory) {
+    const stockLine=document.createElement('p');
+    stockLine.textContent=`Tồn tại CH: ${storeStock(s) ? formatKg(storeStock(s).kg) : 'không có dòng trong file'}`;
+    box.append(stockLine);
+  }
   if (s.mapsUrl) {
     const link = document.createElement('a'); link.href = s.mapsUrl; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = 'Mở Google Maps ↗'; box.append(link);
   }
@@ -338,14 +423,14 @@ function updateMarkers(visible) {
       if (!located.length) continue;
       const lat = located.reduce((sum, s) => sum + s.lat, 0) / located.length;
       const lng = located.reduce((sum, s) => sum + s.lng, 0) / located.length;
-      const icon = L.divIcon({ className:'', html:`<span class="region-cluster"><b>${group.length}</b><small>Miền ${region}</small></span>`, iconSize:[62,62], iconAnchor:[31,31] });
-      const marker = L.marker([lat,lng], { icon, title:`Miền ${region}: ${group.length} cửa hàng, ${group.length - located.length} chưa có tọa độ` });
+      const icon = L.divIcon({ className:'', html:`<span class="region-cluster"><b>${inventory ? compactKg(sumStoreKg(group)) : group.length}</b><small>Miền ${region}</small></span>`, iconSize:[62,62], iconAnchor:[31,31] });
+      const marker = L.marker([lat,lng], { icon, title:`Miền ${region}: ${group.length} cửa hàng${inventory ? ` · ${formatKg(sumStoreKg(group))}` : ''}, ${group.length - located.length} chưa có tọa độ` });
       marker.on('click', () => { state.region = region; state.province = ''; state.selected = null; updateProvinceOptions(); render(); fitArea(); });
       marker.addTo(markerLayer);
     }
     return;
   }
-  if (map.getZoom() <= 7 && !state.province && !state.warehouse) {
+  if ((inventory && state.warehouse && !state.province) || (map.getZoom() <= 7 && !state.province && !state.warehouse)) {
     const groups = new Map();
     for (const s of visible) {
       if (!groups.has(s.province)) groups.set(s.province, []);
@@ -356,9 +441,10 @@ function updateMarkers(visible) {
       if (!located.length) continue;
       const lat = located.reduce((sum, s) => sum + s.lat, 0) / located.length;
       const lng = located.reduce((sum, s) => sum + s.lng, 0) / located.length;
-      const icon = L.divIcon({ className:'', html:`<span class="province-cluster"><b>${group.length}</b><small>${escapeHtml(province)}</small></span>`, iconSize:[46,46], iconAnchor:[23,23] });
-      const marker = L.marker([lat,lng], { icon, title:`${province}: ${group.length} cửa hàng, ${group.length - located.length} chưa có tọa độ` });
-      marker.on('click', () => { state.province = province; state.selected = null; updateProvinceOptions(); render(); fitArea(); });
+      const iconSize=inventory ? 60 : 46;
+      const icon = L.divIcon({ className:'', html:`<span class="province-cluster"><b>${inventory ? compactKg(sumStoreKg(group)) : group.length}</b><small>${escapeHtml(province)}</small></span>`, iconSize:[iconSize,iconSize], iconAnchor:[iconSize/2,iconSize/2] });
+      const marker = L.marker([lat,lng], { icon, title:`${province}: ${group.length} cửa hàng${inventory ? ` · ${formatKg(sumStoreKg(group))}` : ''}, ${group.length - located.length} chưa có tọa độ` });
+      marker.on('click', () => { state.province = province; state.selected = null; if (inventory && state.warehouse) state.connectionTarget='stores'; updateProvinceOptions(); render(); fitArea(); });
       marker.addTo(markerLayer);
     }
     return;
@@ -389,19 +475,32 @@ function fitArea() {
 }
 function chooseWarehouse(id) {
   state.warehouse=id;
+  state.province='';
   state.selected=null;
   state.showConnections=Boolean(id);
   if (id) {
     state.region='Tất cả'; state.province=''; state.type='all'; state.search='';
-    state.connectionTarget='stores';
+    state.connectionTarget=inventory ? 'provinces' : 'stores';
     document.getElementById('search').value='';
-    updateProvinceOptions();
   }
+  updateProvinceOptions();
   render(); fitArea();
 }
 function selectStore(id, moveMap = true) {
+  if (inventory) {
+    const store = stores.find(item => item.id === id);
+    const primaryId = assignmentsByStore.get(id)?.primaryId;
+    if (store && primaryId) {
+      state.warehouse = primaryId;
+      state.province = store.province;
+      state.region = 'Tất cả';
+      state.connectionTarget = 'stores';
+      state.showConnections = true;
+      updateProvinceOptions();
+    }
+  }
   state.selected = id;
-  renderList(filteredStores()); renderDetail();
+  if (inventory) render(); else { renderList(filteredStores()); renderDetail(); }
   document.getElementById('map-note').innerHTML = '';
   document.getElementById('sidebar').classList.remove('sidebar-open');
   const marker = markerById.get(id);
@@ -445,7 +544,9 @@ document.getElementById('regions').addEventListener('click', e => {
   updateProvinceOptions(); render(); fitArea();
 });
 document.getElementById('province').addEventListener('change', e => {
-  state.province = e.target.value; state.selected = null; render(); fitArea();
+  state.province = e.target.value; state.selected = null;
+  if (inventory && state.warehouse) state.connectionTarget=state.province ? 'stores' : 'provinces';
+  render(); fitArea();
 });
 document.getElementById('types').addEventListener('click', e => {
   const button = e.target.closest('[data-type]'); if (!button) return;
@@ -488,7 +589,32 @@ document.getElementById('search').addEventListener('input', e => {
   state.search = e.target.value; state.selected = null; render();
 });
 document.getElementById('store-list').addEventListener('click', e => {
-  const button = e.target.closest('[data-store]'); if (button) selectStore(button.dataset.store);
+  const rootButton=e.target.closest('[data-hierarchy-root]');
+  if (rootButton) { chooseWarehouse(''); return; }
+  const warehouseButton=e.target.closest('[data-warehouse]');
+  if (warehouseButton) { chooseWarehouse(warehouseButton.dataset.warehouse); return; }
+  const backToWarehouse=e.target.closest('[data-hierarchy-warehouse]');
+  if (backToWarehouse) { state.province=''; state.selected=null; state.connectionTarget='provinces'; render(); fitArea(); return; }
+  const provinceButton=e.target.closest('[data-province]');
+  if (provinceButton) { state.province=provinceButton.dataset.province; state.selected=null; state.connectionTarget='stores'; render(); fitArea(); return; }
+  const button=e.target.closest('[data-store]'); if (button) selectStore(button.dataset.store);
+});
+document.getElementById('inventory-file').addEventListener('change', async e => {
+  const file=e.target.files?.[0];
+  if (!file) return;
+  const status=document.getElementById('inventory-status');
+  status.textContent=`Đang đọc ${file.name}…`;
+  try {
+    const parsed=window.HOA_SEN_INVENTORY.parseWorkbook(await file.arrayBuffer(),stores,supply.warehouses,window.XLSX);
+    parsed.fileName=file.name;
+    inventory=parsed;
+    state.region='Tất cả'; state.province=''; state.type='all'; state.search=''; state.selected=null;
+    document.getElementById('search').value='';
+    chooseWarehouse('');
+  } catch (error) {
+    status.textContent=`Không đọc được file: ${error.message}`;
+  }
+  e.target.value='';
 });
 document.getElementById('detail-container').addEventListener('click', e => {
   if (e.target.closest('#detail-close')) { state.selected = null; render(); if (map) map.closePopup(); }
