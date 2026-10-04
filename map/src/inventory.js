@@ -1,5 +1,12 @@
 /* Read the separate inventory workbook in the browser. No workbook data is uploaded. */
 (function (root) {
+  const warehouseAliasesById = {
+    'cai-cui': ['TK Cần Thơ'],
+    'binh-duong': ['TK Hồ Chí Minh'],
+    'binh-dinh': ['TK Gia Lai'],
+    'ha-nam': ['TK Ninh Bình'],
+    'yen-bai': ['TK Lào Cai']
+  };
   function normalize(value) {
     return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
       .replace(/đ/gi, 'd').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -50,7 +57,12 @@
       byStoreName.get(key).push(store);
       byStoreCode.set(normalize(store.code), store);
     }
-    const byWarehouseName = new Map(warehouses.map(warehouse => [normalize(warehouse.name.replace(/^TK\s+/i, '')), warehouse]));
+    const byWarehouseName = new Map();
+    for (const warehouse of warehouses) {
+      for (const name of [warehouse.name, ...(warehouseAliasesById[warehouse.id] || [])]) {
+        byWarehouseName.set(normalize(name.replace(/^TK\s+/i, '')), warehouse);
+      }
+    }
     const result = {
       storeById: new Map(), warehouseById: new Map(), unmatchedStores: new Map(), unmatchedWarehouses: new Map(),
       storeRows: 0, warehouseRows: 0, storeKg: 0, warehouseKg: 0, skippedRows: 0
@@ -98,7 +110,7 @@
     if (!result.storeRows && !result.warehouseRows) throw new Error('File không có dòng tồn kho hợp lệ theo kg.');
     return result;
   }
-  const api = { parseWorkbook, normalize, provinceKey };
+  const api = { parseWorkbook, normalize, provinceKey, warehouseAliasesById };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.HOA_SEN_INVENTORY = api;
 })(typeof window !== 'undefined' ? window : globalThis);
