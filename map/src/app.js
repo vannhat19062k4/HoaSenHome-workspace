@@ -10,7 +10,8 @@ const number = new Intl.NumberFormat('vi-VN');
 const collator = new Intl.Collator('vi');
 const kgFormat = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 });
 let inventory = null;
-let map, markerLayer, warehouseLayer, connectionLayer, connectionRenderer, markerById = new Map(), warehouseMarkerById = new Map();
+let map, markerLayer, warehouseLayer, connectionLayer, transferLayer, connectionRenderer, markerById = new Map(), warehouseMarkerById = new Map();
+const transfer = { fromId:'', toId:'', requestId:0, route:null };
 let areaBoundaryLayer, provinceBoundaryLayer, provinceBoundaryData = null;
 const provinceBoundaryByName = new Map(), coverageBoundaryByKey = new Map(), provincePathByName = new Map();
 const defaultWarehousePoints = new Map(supply.warehouses.map(w => [w.id, {lat:w.lat,lng:w.lng,coordinateStatus:w.coordinateStatus}]));
@@ -27,8 +28,8 @@ root.innerHTML = `
   <div class="app-shell">
     <aside class="sidebar" id="sidebar">
       <div class="brand-row">
-        <div class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></div>
-        <div><div class="brand-name">HOA SEN</div><div class="brand-sub">STORE NETWORK</div></div>
+        <img class="sidebar-logo" src="/assets/logo-hsh.jpg" alt="Hoa Sen Home">
+        <div><div class="brand-name">Hoa Sen Home</div><div class="brand-sub">BẢN ĐỒ MẠNG LƯỚI</div></div>
         <button class="mobile-close" id="mobile-close" aria-label="Đóng danh sách">×</button>
       </div>
       <div class="sidebar-body">
@@ -68,6 +69,15 @@ root.innerHTML = `
             <select id="connection-target" aria-label="Đường nối tới cửa hàng hoặc tỉnh"><option value="stores">Đến cửa hàng</option><option value="provinces">Đến tỉnh</option></select>
           </div>
           <div id="warehouse-summary" class="warehouse-summary"></div>
+          <section class="transfer-planner" aria-label="Điều hàng liên kho">
+            <strong>Điều hàng liên kho</strong>
+            <label class="field-label" for="transfer-from">Kho xuất</label>
+            <select id="transfer-from"></select>
+            <label class="field-label" for="transfer-to">Kho nhận</label>
+            <select id="transfer-to"></select>
+            <button id="transfer-calculate" type="button">Xem tuyến và km ô tô</button>
+            <div id="transfer-result" class="transfer-result" aria-live="polite">Chọn hai tổng kho để xem tuyến điều hàng.</div>
+          </section>
         </div>
         <div class="results-head"><div><span class="eyebrow">KẾT QUẢ</span><h2 id="result-total"></h2></div><span class="result-count" id="pin-total"></span></div>
         <div class="store-list" id="store-list"></div>
@@ -244,6 +254,58 @@ function roadDistance(w,s) {
   routeQueue=request.catch(()=>{});
   routeCache.set(key,request);
   return request;
+}
+function transferRoute(w,s) {
+  const request=routeQueue.then(async()=>{
+    const delay=Math.max(0,1050-(Date.now()-lastRouteRequest));
+    if (delay) await new Promise(resolve=>setTimeout(resolve,delay));
+    lastRouteRequest=Date.now();
+    const url=`https://routing.openstreetmap.de/routed-car/route/v1/driving/${w.lng},${w.lat};${s.lng},${s.lat}?overview=full&geometries=geojson&steps=false`;
+    const response=await fetch(url);
+    if (!response.ok) throw new Error(`Routing HTTP ${response.status}`);
+    const data=await response.json();
+    const route=data?.routes?.[0];
+    if (data.code!=='Ok' || !Number.isFinite(route?.distance) || !Array.isArray(route?.geometry?.coordinates)) throw new Error('No road route');
+    return { km:Math.round(route.distance/100)/10, points:route.geometry.coordinates.map(([lng,lat])=>[lat,lng]), estimated:false };
+  });
+  routeQueue=request.catch(()=>{});
+  return request;
+}
+function showTransferResult(message, from, to, route) {
+  const target=document.getElementById('transfer-result');
+  if (!target) return;
+  if (!route) { target.textContent=message; return; }
+  target.innerHTML=`<strong>${route.estimated?'≈ ':''}${number.format(route.km)} km</strong><span>${route.estimated?'Ước tính theo khoảng cách địa lý; chưa lấy được tuyến ô tô. Đường đứt trên bản đồ chỉ là đường nối tham khảo.':'Tuyến ô tô tham khảo theo OpenStreetMap; chưa xét giới hạn xe tải.'}</span><a href="${routeLink(from,to)}" target="_blank" rel="noopener noreferrer">Mở chỉ đường trên Google Maps ↗</a>${from.coordinateStatus==='area_reference'||to.coordinateStatus==='area_reference'?'<small>Điểm kho đang là tọa độ tham chiếu khu vực; km có thể thay đổi khi cập nhật vị trí cổng kho.</small>':''}`;
+}
+function drawTransferRoute(from,to,route) {
+  if (!map || !transferLayer) return;
+  transferLayer.clearLayers();
+  const line=L.polyline(route.points,{renderer:connectionRenderer,color:'#b92332',weight:5,opacity:.9,dashArray:route.estimated?'8 7':null,interactive:true})
+    .bindTooltip(`${from.name} → ${to.name}: ${route.estimated?'≈ ':''}${number.format(route.km)} km${route.estimated?' ước tính':''}`)
+    .addTo(transferLayer);
+  for (const [w,label] of [[from,'Kho xuất'],[to,'Kho nhận']]) {
+    L.circleMarker([w.lat,w.lng],{radius:9,color:'#fff',weight:3,fillColor:label==='Kho xuất'?'#b92332':'#155c78',fillOpacity:1})
+      .bindTooltip(`${label}: ${w.name}`,{permanent:false,direction:'top'}).addTo(transferLayer);
+  }
+  map.flyToBounds(line.getBounds().pad(.15),{padding:[45,45],maxZoom:12,duration:.7});
+}
+async function calculateTransfer() {
+  const from=warehouseById.get(transfer.fromId), to=warehouseById.get(transfer.toId);
+  const requestId=++transfer.requestId;
+  transferLayer?.clearLayers();
+  transfer.route=null;
+  if (!from || !to) { showTransferResult('Chọn kho xuất và kho nhận.',from,to,null); return; }
+  if (from.id===to.id) { showTransferResult('Kho xuất và kho nhận phải khác nhau.',from,to,null); return; }
+  if (!located(from) || !located(to)) { showTransferResult('Một trong hai kho chưa có tọa độ.',from,to,null); return; }
+  showTransferResult('Đang tính km theo đường ô tô…',from,to,null);
+  let route;
+  try { route=await transferRoute(from,to); }
+  catch { route={km:referenceKm(from,to),points:curvedPoints(from,[to.lat,to.lng],`${from.id}-${to.id}`),estimated:true}; }
+  if (requestId!==transfer.requestId) return;
+  transfer.route=route;
+  showTransferResult('',from,to,route);
+  drawTransferRoute(from,to,route);
+  document.getElementById('sidebar').classList.remove('sidebar-open');
 }
 function showRoadDistance(w,s) {
   const target=document.getElementById('road-distance');
@@ -619,6 +681,7 @@ function initMap() {
   connectionRenderer=L.svg({padding:.5});
   connectionLayer = L.layerGroup().addTo(map);
   warehouseLayer = L.layerGroup().addTo(map);
+  transferLayer = L.layerGroup().addTo(map);
   map.on('zoomend', () => updateMarkers(filteredStores()));
   [['Hoàng Sa',16.5,112.1],['Trường Sa',9.5,112.3]].forEach(([label,lat,lng]) => {
     L.marker([lat,lng], { icon:L.divIcon({ className:'', html:`<span class="island-map-label">${label}</span>`, iconSize:[85,22], iconAnchor:[42,11] }), interactive:false }).addTo(map);
@@ -646,6 +709,16 @@ document.getElementById('types').addEventListener('click', e => {
 document.getElementById('warehouse').addEventListener('change', e => {
   chooseWarehouse(e.target.value);
 });
+for (const [id,key] of [['transfer-from','fromId'],['transfer-to','toId']]) {
+  document.getElementById(id).addEventListener('change',e=>{
+    transfer[key]=e.target.value;
+    ++transfer.requestId;
+    transfer.route=null;
+    transferLayer?.clearLayers();
+    showTransferResult('Bấm “Xem tuyến và km ô tô” để tính tuyến mới.',null,null,null);
+  });
+}
+document.getElementById('transfer-calculate').addEventListener('click',calculateTransfer);
 document.getElementById('show-connections').addEventListener('change', e => {
   state.showConnections=e.target.checked; render();
 });
@@ -714,4 +787,7 @@ document.getElementById('mobile-list').addEventListener('click', () => document.
 document.getElementById('mobile-close').addEventListener('click', () => document.getElementById('sidebar').classList.remove('sidebar-open'));
 
 document.getElementById('warehouse').innerHTML='<option value="">Tất cả tổng kho</option>' + supply.warehouses.map(w=>`<option value="${escapeHtml(w.id)}">${escapeHtml(warehouseLabel(w))}</option>`).join('');
+for (const [id,label] of [['transfer-from','Chọn kho xuất'],['transfer-to','Chọn kho nhận']]) {
+  document.getElementById(id).innerHTML=`<option value="">${label}</option>`+supply.warehouses.map(w=>`<option value="${escapeHtml(w.id)}">${escapeHtml(warehouseLabel(w))}</option>`).join('');
+}
 updateProvinceOptions(); render(); initMap();

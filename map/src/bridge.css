@@ -1,0 +1,22 @@
+html,body{height:100%}
+body{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+.site-header{flex:none;z-index:2000}
+#root{flex:1;min-height:0}
+.app-shell{position:relative;height:100%;min-height:0}
+.site-footer{display:none}
+.sidebar-logo{width:42px;height:42px;flex:none;object-fit:contain;border-radius:10px}
+.brand-name{font-size:15px;letter-spacing:0;color:#263747}
+.brand-sub{letter-spacing:.12em}
+html[data-theme="light"] .sidebar .metric{background:transparent;border:0;border-right:1px solid #e7ebed;border-radius:0;padding:0 0 0 16px}
+html[data-theme="light"] .sidebar .metric:last-child{border-right:0}
+.transfer-planner{display:flex;flex-direction:column;gap:7px;margin-top:7px;padding:12px;border:1px solid #dbe7e9;border-radius:10px;background:#f7fafb}
+.transfer-planner>strong{font-size:12px;color:#243947;margin-bottom:2px}
+.transfer-planner select{width:100%}
+#transfer-calculate{border:0;border-radius:7px;background:#b92332;color:#fff;padding:10px 12px;font-size:11px;font-weight:800}
+#transfer-calculate:hover{background:#9f1e2b}
+.transfer-result{font-size:10px;line-height:1.5;color:#59707b}
+.transfer-result strong{display:block;font-size:18px;color:#b92332}
+.transfer-result span,.transfer-result small{display:block}
+.transfer-result a{display:inline-block;color:#155c78;font-weight:800;margin-top:5px}
+.transfer-result small{color:#8c6e4e;margin-top:4px}
+@media(max-width:650px){.site-header-inner{padding:10px 14px}.sidebar{z-index:1600}}

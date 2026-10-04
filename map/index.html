@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f8f6f2" />
     <title>Bản đồ cửa hàng Hoa Sen</title>
+    <script src="/assets/theme.js"></script>
+    <link rel="stylesheet" href="/assets/shared.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -12,13 +14,19 @@
     <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link rel="stylesheet" href="./src/styles.css" />
     <link rel="stylesheet" href="./src/map-extras.css?v=20261004-3" />
+    <link rel="stylesheet" href="/assets/theme.css" />
+    <link rel="stylesheet" href="./src/bridge.css?v=20261004-4" />
   </head>
   <body>
+    <header class="site-header"><div class="site-header-inner">
+      <a class="brand" href="/"><img src="/assets/logo-hsh.jpg" alt="Hoa Sen Home"><div><strong>Hoa Sen Home</strong><span>Trung tâm công cụ</span></div></a>
+      <nav class="site-nav" aria-label="Công cụ"><a href="/">Tổng quan</a><a href="/inventory/">Tồn kho theo định mức</a><a href="/truck/">Tối ưu tải xe</a><a href="/pull">Kiểm tra kéo hàng</a><a href="/dashboard/">Dashboard kinh doanh</a><a class="active" href="/map/">Bản đồ cửa hàng</a></nav>
+    </div></header>
     <div id="root"></div>
     <script defer src="./data/stores.js?v=20261004-3"></script>
     <script defer src="./data/supply.js?v=20261003-2"></script>
     <script defer src="/inventory/xlsx.full.min.js"></script>
     <script defer src="./src/inventory.js?v=20261004-2"></script>
-    <script defer src="./src/app.js?v=20261004-3"></script>
+    <script defer src="./src/app.js?v=20261004-4"></script>
   </body>
 </html>
