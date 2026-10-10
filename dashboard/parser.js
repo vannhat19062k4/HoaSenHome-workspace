@@ -45,8 +45,8 @@
     };
     const products = [], details = []; let firstDetail = 5;
     for (const category of CATEGORIES) {
-      const row = labeledRow(sales, category, 2, 5, 72, true);
-      const stockRow = labeledRow(inventory, category, 2, 5, 72, true);
+      const row = labeledRow(sales, category, 2, 5, lastRow(sales), true);
+      const stockRow = labeledRow(inventory, category, 2, 5, lastRow(inventory), true);
       products.push({ name: category, daily_kg: num(col(sales, 'I', row)), mtd_kg: num(col(sales, 'AO', row)), revenue_vnd: num(col(sales, 'AP', row)), profit_vnd: num(col(sales, 'AR', row)), inventory_kg: num(col(inventory, 'O', stockRow)), delta_kg: num(col(sales, 'BK', row)) });
       let subgroup = '';
       for (let dr = firstDetail; dr < row; dr++) {
