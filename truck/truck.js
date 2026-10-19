@@ -17,7 +17,7 @@ function readBrowserPresets() {
   } catch { return {}; }
 }
 function saveBrowserPresets(presets) { localStorage.setItem(browserPresetKey, JSON.stringify(presets)); state.browserPresets = presets; }
-const defaultCargo = (index) => ({ name: `Hàng ${index + 1}`, kind: 'Cuộn tròn', qty: 100, kg: 60, target_kg: 0, priority: 3, orientation: 'Đứng', diameter: 0.4, roll_height: 1.2, plate_length: 1.2, plate_width: 0.6, thickness_mm: 4, baseDimensions: [1.2, 0.4, 0.4], dimensions: [1.2, 0.4, 0.4] });
+const defaultCargo = (index) => ({ name: `Hàng ${index + 1}`, kind: 'Cuộn tròn', qty: 100, kg: 60, target_kg: 0, priority: 3, orientation: 'Đứng', diameter: 0.4, roll_height: 1.2, plate_length: 1.2, plate_width: 0.6, thickness_mm: 4, baseDimensions: [1.2, 0.4, 0.4], boxAxes: [0, 1, 2], dimensions: [1.2, 0.4, 0.4] });
 const browserPresets = readBrowserPresets();
 const state = { presets: { ...bundledPresets, ...browserPresets }, browserPresets, presetStorage: 'browser', defaults: Object.keys(bundledPresets), vehicleName: 'Xe tải 8T', vehicle: null, over: true, cargos: Array.from({ length: 6 }, (_, i) => defaultCargo(i)), count: 3, activeCargo: 0, plans: [], planInputs: [], initialInputs: [], originalCargos: [], originalBreakdowns: [], manualDrafts: [], activePlan: 0, busy: false };
 
@@ -90,6 +90,23 @@ function permutations(values) {
   return all.filter((item, index) => all.findIndex(other => JSON.stringify(other) === JSON.stringify(item)) === index);
 }
 
+function boxOrientations(baseDimensions) {
+  return permutations([0, 1, 2]).map(axes => ({ axes, dimensions: axes.map(axis => baseDimensions[axis]) }))
+    .filter((item, index, all) => all.findIndex(other => JSON.stringify(other.dimensions) === JSON.stringify(item.dimensions)) === index);
+}
+
+function updateBoxDimensions(c) {
+  c.dimensions = c.boxAxes.map(axis => c.baseDimensions[axis]);
+}
+
+function renderBoxOrientations(c) {
+  const select = $('#box-orientation');
+  const choices = boxOrientations(c.baseDimensions);
+  select.innerHTML = choices.map(({ axes, dimensions }) => `<option value="${esc(JSON.stringify(axes))}" ${JSON.stringify(dimensions) === JSON.stringify(c.dimensions) ? 'selected' : ''}>${boxOrientationLabel(dimensions)}</option>`).join('');
+  c.boxAxes = JSON.parse(select.value);
+  updateBoxDimensions(c);
+}
+
 function boxOrientationLabel(values) {
   return values.map((value, index) => `${Number(value).toFixed(3)} ${'XYZ'[index]}`).join(' × ');
 }
@@ -109,11 +126,10 @@ function renderCargo() {
   } else if (c.kind === 'Tấm phẳng') {
     details = `<p class="hint">Dành cho tôn, thép tấm, panel… Nhập độ dày theo mm.</p><div class="form-grid">${field('Dài tấm (m)', 'plate_length', c.plate_length, .01, 20, .05)}${field('Rộng tấm (m)', 'plate_width', c.plate_width, .01, 20, .05)}${field('Độ dày (mm)', 'thickness_mm', c.thickness_mm, .1, 500, .1)}</div><div class="field orientation-field"><label>Tư thế xếp</label><div class="orientation-options">${['Nằm (chồng lên)', 'Đứng dọc xe', 'Đứng ngang xe'].map(item => `<label><input type="radio" name="orientation" value="${item}" ${c.orientation === item ? 'checked' : ''}>${item}</label>`).join('')}</div></div><p id="plate-grid" class="hint"></p>`;
   } else {
-    const perms = permutations(c.baseDimensions);
-    const selected = JSON.stringify(c.dimensions);
-    details = `<div class="form-grid">${field('Dài (m)', 'box-length', c.baseDimensions[0], .001, 20, .05)}${field('Rộng (m)', 'box-width', c.baseDimensions[1], .001, 20, .05)}${field('Cao (m)', 'box-height', c.baseDimensions[2], .001, 20, .05)}</div><div class="field orientation-field"><label for="box-orientation">Tư thế X × Y × Z</label><select id="box-orientation">${perms.map(p => `<option value="${esc(JSON.stringify(p))}" ${JSON.stringify(p) === selected ? 'selected' : ''}>${boxOrientationLabel(p)}</option>`).join('')}</select></div>`;
+    details = `<div class="form-grid">${field('Dài (m)', 'box-length', c.baseDimensions[0], .001, 20, .05)}${field('Rộng (m)', 'box-width', c.baseDimensions[1], .001, 20, .05)}${field('Cao (m)', 'box-height', c.baseDimensions[2], .001, 20, .05)}</div><div class="field orientation-field"><label for="box-orientation">Tư thế X × Y × Z</label><select id="box-orientation"></select></div>`;
   }
   $('#cargo-form').innerHTML = `<div class="cargo-form-grid"><div class="field"><label for="name">Tên hàng</label><input id="name" data-field="name" maxlength="100" value="${esc(c.name)}"></div><div class="field"><label for="kind">Dạng hàng</label><select id="kind" data-field="kind">${options(['Cuộn tròn', 'Hình hộp', 'Tấm phẳng'], c.kind)}</select></div>${field('Số lượng cần chở', 'qty', c.qty, 1, 1000000, 1)}${field('Kg / đơn vị', 'kg', c.kg, .001, 50000, .001)}${field('Tải mong muốn (kg) · 0 = tự phân bổ', 'target_kg', c.target_kg, 0, 100000, 100)}<div class="field"><label for="priority">Ưu tiên</label><select id="priority" data-field="priority">${options(['3', '2', '1'], String(c.priority))}</select></div></div><div class="cargo-kind-fields"><h3>Kích thước và tư thế xếp</h3>${details}</div>`;
+  if (c.kind === 'Hình hộp') renderBoxOrientations(c);
   updatePlateGrid();
 }
 
@@ -242,7 +258,12 @@ async function recalculate() {
 
 function boxMesh(p) {
   const { x, y, z, lx: a, ly: b, lz: c } = p;
-  return { x: [x,x+a,x+a,x,x,x+a,x+a,x], y: [y,y,y+b,y+b,y,y,y+b,y+b], z: [z,z,z,z,z+c,z+c,z+c,z+c], i: [0,0,0,1,1,2,4,4,5,3,3,6], j: [1,2,4,2,5,6,5,6,7,0,4,7], k: [2,3,5,3,6,7,1,7,6,4,7,3] };
+  return {
+    x: [x,x+a,x+a,x,x,x+a,x+a,x], y: [y,y,y+b,y+b,y,y,y+b,y+b], z: [z,z,z,z,z+c,z+c,z+c,z+c],
+    i: [0,0,4,4,0,0,1,1,2,2,3,3],
+    j: [2,3,5,6,1,5,2,6,3,7,0,4],
+    k: [1,2,6,7,5,4,6,5,7,6,4,7]
+  };
 }
 
 function cylinderMesh(p, diameter) {
@@ -284,7 +305,7 @@ document.addEventListener('change', event => {
   if (t.id === 'allow-over') { state.over = t.checked; renderVehicle(); updatePlateGrid(); return; }
   if (t.id === 'cargo-count') { state.count = Number(t.value); state.activeCargo = Math.min(state.activeCargo, state.count - 1); renderCargo(); return; }
   if (t.name === 'orientation') { state.cargos[state.activeCargo].orientation = t.value; updatePlateGrid(); return; }
-  if (t.id === 'box-orientation') { state.cargos[state.activeCargo].dimensions = JSON.parse(t.value); return; }
+  if (t.id === 'box-orientation') { const c = state.cargos[state.activeCargo]; c.boxAxes = JSON.parse(t.value); updateBoxDimensions(c); return; }
   if (t.dataset.field === 'kind') { const c = state.cargos[state.activeCargo]; c.kind = t.value; c.orientation = t.value === 'Tấm phẳng' ? 'Nằm (chồng lên)' : t.value === 'Cuộn tròn' ? 'Đứng' : ''; renderCargo(); return; }
   if (t.dataset.field === 'priority') { state.cargos[state.activeCargo].priority = Number(t.value); return; }
 });
@@ -294,8 +315,9 @@ document.addEventListener('input', event => {
   if (t.dataset.manualQty !== undefined) { state.manualDrafts[state.activePlan][Number(t.dataset.manualQty)].qty = Number(t.value); return; }
   if (t.dataset.manualTarget !== undefined) { state.manualDrafts[state.activePlan][Number(t.dataset.manualTarget)].target_kg = Number(t.value); return; }
   if (t.closest('#vehicle-fields') && t.dataset.field) { state.vehicle[t.dataset.field] = Number(t.value); if (t.dataset.field === 'wall') { $('#height').min = t.value; if (state.vehicle.height < state.vehicle.wall) { state.vehicle.height = state.vehicle.wall; $('#height').value = state.vehicle.height; } } updateVehicleSummary(); updatePlateGrid(); return; }
+  const boxAxis = { 'box-length': 0, 'box-width': 1, 'box-height': 2 }[t.id];
+  if (boxAxis !== undefined && t.closest('#cargo-form')) { const c = state.cargos[state.activeCargo]; c.baseDimensions[boxAxis] = Number(t.value); updateBoxDimensions(c); renderBoxOrientations(c); return; }
   if (t.closest('#cargo-form') && t.dataset.field && t.dataset.field !== 'kind') { const c = state.cargos[state.activeCargo]; c[t.dataset.field] = t.dataset.field === 'name' ? t.value : Number(t.value); updatePlateGrid(); return; }
-  if (t.id.startsWith('box-')) { const c = state.cargos[state.activeCargo]; const axis = { 'box-length': 0, 'box-width': 1, 'box-height': 2 }[t.id]; if (axis !== undefined) { c.baseDimensions[axis] = Number(t.value); c.dimensions = [...c.baseDimensions]; const select = $('#box-orientation'); select.innerHTML = permutations(c.baseDimensions).map(p => `<option value="${esc(JSON.stringify(p))}">${boxOrientationLabel(p)}</option>`).join(''); } }
 });
 
 document.addEventListener('click', async event => {
