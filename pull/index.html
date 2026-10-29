@@ -25,6 +25,11 @@
       <div class="source-actions"><button id="reload-report" class="btn ghost" type="button">Đọc lại file đã nhập</button><label class="btn upload-button" for="report-file">Chọn file Excel khác</label><input id="report-file" type="file" accept=".xlsx,.xls" hidden></div>
     </section>
     <div id="source-warning" aria-live="polite"></div>
+    <section class="panel pr-panel" aria-labelledby="pr-heading">
+      <div><h2 id="pr-heading">File đề nghị kéo hàng PR <small>Không bắt buộc</small></h2><p id="pr-status" class="hint" aria-live="polite">Chưa chọn file PR. Bạn vẫn có thể kiểm tra tồn kho như bình thường.</p></div>
+      <div class="source-actions"><label class="btn upload-button" for="pr-file">Chọn file PR Excel</label><input id="pr-file" type="file" accept=".xlsx,.xls" hidden><button id="clear-pr" class="btn ghost" type="button" hidden>Bỏ file PR</button></div>
+    </section>
+    <div id="pr-warning" aria-live="polite"></div>
     <section class="panel setup-panel" aria-labelledby="setup-heading">
       <div class="panel-title"><div><h2 id="setup-heading">Sản phẩm và mức chia</h2><p class="hint">Mức nhập cho một cửa hàng của từng mô hình. Để trống mô hình không áp dụng.</p></div></div>
       <div class="field product-field"><label for="product-name">Tên sản phẩm trong phần TỒN KHO</label><input id="product-name" type="search" autocomplete="off" placeholder="Gõ tên sản phẩm để tìm" aria-controls="product-options" aria-expanded="false" disabled><div id="product-options" class="product-options" role="listbox" hidden></div><small id="product-count">Chưa có danh sách sản phẩm.</small></div>
