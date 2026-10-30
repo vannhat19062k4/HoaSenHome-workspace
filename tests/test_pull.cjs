@@ -19,8 +19,8 @@ fields['[data-model="CHTT"]'].value = '50';
 context.window = { XLSX };
 context.document = { querySelector: selector => fields[selector] };
 const app = fs.readFileSync(path.join(root, 'pull/pull.js'), 'utf8').split("$('#rules-grid').innerHTML")[0];
-vm.runInContext(`${app}\nthis.testApi = { parseReport, parsePr, matchPr, calculate, exportExcel, renderRegion, state };`, context);
-const { parseReport, parsePr, matchPr, calculate, exportExcel, renderRegion, state } = context.testApi;
+vm.runInContext(`${app}\nthis.testApi = { parseReport, parsePr, matchPr, calculate, exportExcel, renderRegion, filteredRows, state };`, context);
+const { parseReport, parsePr, matchPr, calculate, exportExcel, renderRegion, filteredRows, state } = context.testApi;
 
 const grid = Array.from({ length: 8 }, () => Array(157));
 grid[0][93] = 'TỒN KHO 24/09/2026';
@@ -103,4 +103,12 @@ assert.match(grouped, /Cửa hàng 3[\s\S]*?pull-zero/);
 assert.match(grouped, /Trạng thái PR/);
 assert.match(grouped, /Đã gửi/);
 assert.match(grouped, /Chưa gửi/);
+const filterRows = [
+  { province: 'An Giang', name: 'Long Xuyên' },
+  { province: 'An Giang', name: 'Châu Đốc' },
+  { province: 'Cần Thơ', name: 'Lòng Hồ' },
+];
+assert.deepEqual(Array.from(filteredRows(filterRows, 'An Giang', 'long'), row => row.name), ['Long Xuyên']);
+assert.deepEqual(Array.from(filteredRows(filterRows, '', 'long'), row => row.name), ['Long Xuyên', 'Lòng Hồ']);
+assert.deepEqual(Array.from(filteredRows(filterRows, 'Cần Thơ', 'không có')), []);
 console.log('Pull tracking checks passed');

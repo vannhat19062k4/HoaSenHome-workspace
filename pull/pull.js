@@ -8,7 +8,7 @@ const regions = [
   { id: 'trung', label: 'Miền Trung' },
   { id: 'bac', label: 'Miền Bắc' },
 ];
-const state = { report: null, pr: null, result: null, activeRegion: 'nam' };
+const state = { report: null, pr: null, result: null, activeRegion: 'nam', provinceFilter: '', storeSearch: '' };
 let reportLoadId = 0;
 let prLoadId = 0;
 
@@ -310,6 +310,18 @@ function calculate() {
 
 function metric(label, value) { return `<div class="metric"><span>${label}</span><strong>${value}</strong></div>`; }
 
+function filteredRows(rows, province = state.provinceFilter, search = state.storeSearch) {
+  const query = norm(search);
+  return rows.filter(row => (!province || norm(row.province) === norm(province)) && (!query || norm(row.name).includes(query)));
+}
+
+function renderRegionDetail() {
+  if (!state.result) return;
+  const rows = filteredRows(state.result.byRegion[state.activeRegion]);
+  $('#region-detail').innerHTML = renderRegion(regions.find(region => region.id === state.activeRegion), rows);
+  $('#filter-count').textContent = `Đang xem ${fmt(rows.length, 0)} / ${fmt(state.result.byRegion[state.activeRegion].length, 0)} cửa hàng`;
+}
+
 function renderRegion(region, rows) {
   const sum = summarize(rows);
   const provinces = new Map();
@@ -327,7 +339,7 @@ function renderRegion(region, rows) {
     <div class="region-figures"><span>Mức cần có <strong>${fmt(sum.target)} kg</strong></span><span>Tồn hiện tại <strong>${fmt(sum.stock)} kg</strong></span><span>Còn cần kéo <strong>${fmt(sum.remaining)} kg</strong></span></div>
     <div class="progress-track"><div class="progress-fill" style="width:${(sum.progress * 100).toFixed(2)}%"></div></div>
     <p class="region-note">Mỗi dòng vàng nhạt là tổng của một tỉnh. Cột “Còn cần kéo” cộng phần thiếu của từng cửa hàng.</p>
-    <div class="table-wrap pull-table-wrap"><table class="pull-detail-table"><thead><tr><th scope="col">Tỉnh</th><th scope="col">Tên cửa hàng</th><th scope="col">Mô hình</th><th scope="col" class="numeric">Mức cần có <small>kg / CH</small></th><th scope="col" class="numeric">Tồn hiện tại <small>kg</small></th><th scope="col" class="numeric">Còn cần kéo <small>kg</small></th><th scope="col">Trạng thái PR</th></tr></thead><tbody>${detailRows || '<tr><td colspan="7">Không có cửa hàng thuộc mô hình đã chọn.</td></tr>'}</tbody></table></div></section>`;
+    <div class="table-wrap pull-table-wrap"><table class="pull-detail-table"><thead><tr><th scope="col">Tỉnh</th><th scope="col">Tên cửa hàng</th><th scope="col">Mô hình</th><th scope="col" class="numeric">Mức cần có <small>kg / CH</small></th><th scope="col" class="numeric">Tồn hiện tại <small>kg</small></th><th scope="col" class="numeric">Còn cần kéo <small>kg</small></th><th scope="col">Trạng thái PR</th></tr></thead><tbody>${detailRows || '<tr><td colspan="7">Không có cửa hàng khớp bộ lọc.</td></tr>'}</tbody></table></div></section>`;
 }
 
 function renderResult(result) {
@@ -341,7 +353,9 @@ function renderResult(result) {
   $('#results').innerHTML = `<section class="panel"><div class="summary-head"><div><div class="eyebrow">KẾT QUẢ TOÀN QUỐC</div><h2>${esc(product.name)}</h2><p>Tồn kho đến ${esc(state.report.date || 'ngày chưa xác định')} · ${esc(state.report.fileName)} · ${Object.keys(rules).length} mô hình áp dụng</p></div><strong>${fmt(total.progress * 100)}% mức phủ</strong></div>
     <div class="metric-grid">${metric('Cửa hàng áp dụng', fmt(total.stores, 0))}${metric('Đã đạt mức', `${total.reached}/${total.stores}`)}${metric('Đã kéo (tồn hiện tại)', `${fmt(total.stock)} kg`)}${metric('Còn cần kéo', `${fmt(total.remaining)} kg`)}</div><p class="region-note">Tồn hiện tại được tính là đã kéo. Mức phủ dựa trên từng cửa hàng; phần vượt ở cửa hàng khác không bù phần thiếu.</p>${prNote}</section>
     <div class="region-tabs" role="group" aria-label="Chọn miền để xem chi tiết">${tabs}</div>
-    ${renderRegion(regions.find(region => region.id === state.activeRegion), result.byRegion[state.activeRegion])}`;
+    <div class="panel pull-filters"><div class="field"><label for="pull-province">Lọc tỉnh</label><select id="pull-province"><option value="">Tất cả tỉnh trong miền</option>${[...new Set(result.byRegion[state.activeRegion].map(row => row.province))].sort((a, b) => a.localeCompare(b, 'vi')).map(name => `<option value="${esc(name)}"${state.provinceFilter === name ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select></div><div class="field"><label for="pull-store-search">Tìm tên cửa hàng</label><input id="pull-store-search" type="search" value="${esc(state.storeSearch)}" placeholder="Nhập tên cửa hàng…" autocomplete="off"></div><span id="filter-count" class="filter-count"></span></div>
+    <div id="region-detail"></div>`;
+  renderRegionDetail();
   $('#export-pull').disabled = false;
 }
 
@@ -415,7 +429,7 @@ document.addEventListener('click', event => {
   if (!event.target.closest('.product-field')) hideProductOptions();
 });
 $('#check-pull').addEventListener('click', () => {
-  try { const result = calculate(); state.result = result; state.activeRegion = 'nam'; notice('#input-warning', ''); renderResult(result); }
+  try { const result = calculate(); state.result = result; state.activeRegion = 'nam'; state.provinceFilter = ''; state.storeSearch = ''; notice('#input-warning', ''); renderResult(result); }
   catch (error) { state.result = null; $('#export-pull').disabled = true; notice('#input-warning', error.message); }
 });
 $('#export-pull').addEventListener('click', () => {
@@ -426,8 +440,19 @@ $('#results').addEventListener('click', event => {
   const tab = event.target.closest('[data-region-tab]');
   if (!tab || !state.result) return;
   state.activeRegion = tab.dataset.regionTab;
+  state.provinceFilter = '';
   renderResult(state.result);
   $(`[data-region-tab="${state.activeRegion}"]`).focus();
+});
+$('#results').addEventListener('change', event => {
+  if (event.target.id !== 'pull-province') return;
+  state.provinceFilter = event.target.value;
+  renderRegionDetail();
+});
+$('#results').addEventListener('input', event => {
+  if (event.target.id !== 'pull-store-search') return;
+  state.storeSearch = event.target.value;
+  renderRegionDetail();
 });
 document.querySelectorAll('#product-name,#rules-grid input').forEach(input => input.addEventListener('input', () => {
   invalidateResult();

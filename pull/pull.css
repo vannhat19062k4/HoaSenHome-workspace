@@ -37,3 +37,9 @@ html[data-theme="light"] .pull-detail-table{--pull-row-bg:#fff;--pull-alt-bg:#f7
 .pr-unmatched summary{cursor:pointer}
 .pr-unmatched p{line-height:1.6;color:var(--muted);overflow-wrap:anywhere}
 @media(max-width:650px){.pr-panel .source-actions{width:100%}}
+
+.pull-filters{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin-top:16px;padding:16px 18px}
+.pull-filters .field{flex:1 1 230px;max-width:340px}
+.pull-filters .field select,.pull-filters .field input{background:var(--surface-2);border-color:var(--border);color:var(--text)}
+.pull-filters .filter-count{margin-left:auto;color:var(--muted);font-size:12px;white-space:nowrap;padding-bottom:10px}
+@media(max-width:650px){.pull-filters .field{max-width:none;flex-basis:100%}.pull-filters .filter-count{margin-left:0;padding-bottom:0}}
