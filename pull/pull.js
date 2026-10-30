@@ -320,6 +320,7 @@ function renderRegionDetail() {
   const rows = filteredRows(state.result.byRegion[state.activeRegion]);
   $('#region-detail').innerHTML = renderRegion(regions.find(region => region.id === state.activeRegion), rows);
   $('#filter-count').textContent = `Đang xem ${fmt(rows.length, 0)} / ${fmt(state.result.byRegion[state.activeRegion].length, 0)} cửa hàng`;
+  $('#clear-pull-filters').disabled = !state.provinceFilter && !state.storeSearch;
 }
 
 function renderRegion(region, rows) {
@@ -353,7 +354,7 @@ function renderResult(result) {
   $('#results').innerHTML = `<section class="panel"><div class="summary-head"><div><div class="eyebrow">KẾT QUẢ TOÀN QUỐC</div><h2>${esc(product.name)}</h2><p>Tồn kho đến ${esc(state.report.date || 'ngày chưa xác định')} · ${esc(state.report.fileName)} · ${Object.keys(rules).length} mô hình áp dụng</p></div><strong>${fmt(total.progress * 100)}% mức phủ</strong></div>
     <div class="metric-grid">${metric('Cửa hàng áp dụng', fmt(total.stores, 0))}${metric('Đã đạt mức', `${total.reached}/${total.stores}`)}${metric('Đã kéo (tồn hiện tại)', `${fmt(total.stock)} kg`)}${metric('Còn cần kéo', `${fmt(total.remaining)} kg`)}</div><p class="region-note">Tồn hiện tại được tính là đã kéo. Mức phủ dựa trên từng cửa hàng; phần vượt ở cửa hàng khác không bù phần thiếu.</p>${prNote}</section>
     <div class="region-tabs" role="group" aria-label="Chọn miền để xem chi tiết">${tabs}</div>
-    <div class="panel pull-filters"><div class="field"><label for="pull-province">Lọc tỉnh</label><select id="pull-province"><option value="">Tất cả tỉnh trong miền</option>${[...new Set(result.byRegion[state.activeRegion].map(row => row.province))].sort((a, b) => a.localeCompare(b, 'vi')).map(name => `<option value="${esc(name)}"${state.provinceFilter === name ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select></div><div class="field"><label for="pull-store-search">Tìm tên cửa hàng</label><input id="pull-store-search" type="search" value="${esc(state.storeSearch)}" placeholder="Nhập tên cửa hàng…" autocomplete="off"></div><span id="filter-count" class="filter-count"></span></div>
+    <div class="panel pull-filters" role="search" aria-label="Lọc cửa hàng trong ${esc(regions.find(region => region.id === state.activeRegion).label)}"><strong class="filter-heading">Lọc danh sách cửa hàng</strong><div class="filter-controls"><div class="field"><label for="pull-province">Tỉnh</label><select id="pull-province"><option value="">Tất cả tỉnh trong miền</option>${[...new Set(result.byRegion[state.activeRegion].map(row => row.province))].sort((a, b) => a.localeCompare(b, 'vi')).map(name => `<option value="${esc(name)}"${state.provinceFilter === name ? ' selected' : ''}>${esc(name)}</option>`).join('')}</select></div><div class="field"><label for="pull-store-search">Tên cửa hàng</label><input id="pull-store-search" type="search" value="${esc(state.storeSearch)}" placeholder="Tìm tên cửa hàng…" autocomplete="off"></div><button type="button" id="clear-pull-filters" class="btn ghost" ${!state.provinceFilter && !state.storeSearch ? 'disabled' : ''}>Xóa lọc</button><span id="filter-count" class="filter-count"></span></div></div>
     <div id="region-detail"></div>`;
   renderRegionDetail();
   $('#export-pull').disabled = false;
@@ -452,6 +453,15 @@ $('#results').addEventListener('change', event => {
 $('#results').addEventListener('input', event => {
   if (event.target.id !== 'pull-store-search') return;
   state.storeSearch = event.target.value;
+  renderRegionDetail();
+});
+$('#results').addEventListener('click', event => {
+  if (event.target.id !== 'clear-pull-filters') return;
+  state.provinceFilter = '';
+  state.storeSearch = '';
+  $('#pull-province').value = '';
+  $('#pull-store-search').value = '';
+  event.target.disabled = true;
   renderRegionDetail();
 });
 document.querySelectorAll('#product-name,#rules-grid input').forEach(input => input.addEventListener('input', () => {

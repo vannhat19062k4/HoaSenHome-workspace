@@ -43,3 +43,14 @@ html[data-theme="light"] .pull-detail-table{--pull-row-bg:#fff;--pull-alt-bg:#f7
 .pull-filters .field select,.pull-filters .field input{background:var(--surface-2);border-color:var(--border);color:var(--text)}
 .pull-filters .filter-count{margin-left:auto;color:var(--muted);font-size:12px;white-space:nowrap;padding-bottom:10px}
 @media(max-width:650px){.pull-filters .field{max-width:none;flex-basis:100%}.pull-filters .filter-count{margin-left:0;padding-bottom:0}}
+
+/* Keep filters visible beside the detail table and headings visible while it scrolls. */
+.pull-filters{display:block;position:sticky;top:66px;z-index:30;box-shadow:0 8px 20px rgba(0,0,0,.08)}
+.pull-filters .filter-heading{display:block;margin-bottom:10px;font-size:13px}
+.pull-filters .filter-controls{display:flex;align-items:end;gap:12px;flex-wrap:wrap}
+.pull-filters .btn{min-height:40px}
+.pull-table-wrap{max-height:min(70vh,720px);overflow:auto;overscroll-behavior:contain}
+.pull-detail-table thead th{position:sticky;top:0;z-index:2;background:var(--surface-2);box-shadow:0 1px 0 var(--border)}
+html[data-theme="light"] .pull-detail-table thead th{background:#e9edf2}
+@media(max-width:850px){.pull-filters{top:112px}}
+@media(max-width:650px){.pull-filters .filter-controls{gap:8px}.pull-filters .field{flex:1 1 100%}.pull-filters .btn{flex:1}.pull-filters .filter-count{flex:1 1 100%}}
