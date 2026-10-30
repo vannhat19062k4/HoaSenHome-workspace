@@ -252,7 +252,7 @@ function renderProvinceTable() {
   
   PRODUCT_KEYS.forEach(pk => {
     headerHTML += `<th class="col-number">${PRODUCT_LABELS[pk]}<br><small style="color:var(--text-muted);font-weight:400;">ĐM: ${QUOTA_LEVELS[level]}</small></th>`;
-    headerHTML += `<th class="col-number" style="background:rgba(59,130,246,0.05);">Thực tế</th>`;
+    headerHTML += `<th class="col-number col-actual">Thực tế</th>`;
     headerHTML += `<th class="col-number">Trạng thái</th>`;
   });
   headerHTML += '</tr>';
@@ -267,13 +267,13 @@ function renderProvinceTable() {
       lastRegion = data.region;
       const regionLabel = REGIONS.find(r => r.id === data.region);
       if (regionLabel) {
-        bodyHTML += `<tr class="row-region"><td colspan="${2 + PRODUCT_KEYS.length * 3}" style="font-weight:700; padding:14px; font-size:14px; position: sticky; left: 0;">${regionLabel.icon} ${regionLabel.label}</td></tr>`;
+        bodyHTML += `<tr class="row-region"><td colspan="${2 + PRODUCT_KEYS.length * 3}">${regionLabel.icon} ${regionLabel.label}</td></tr>`;
       }
     }
     
     const isKho = data.type === 'tong_kho';
     bodyHTML += `<tr class="${isKho ? 'row-tong-kho' : ''}">`;
-    bodyHTML += `<td style="position: sticky; left: 0; background: ${isKho ? 'rgba(168, 85, 247, 0.05)' : 'var(--bg-card)'}; z-index: 5; white-space: nowrap;">
+    bodyHTML += `<td class="sticky-province-cell">
       <div style="display:flex;align-items:center;gap:8px;">
         <span class="type-badge ${isKho ? 'type-tong-kho' : 'type-tinh'}">${isKho ? 'TK' : 'Tỉnh'}</span>
         <span style="font-weight:600;">${data.name}</span>
@@ -288,7 +288,7 @@ function renderProvinceTable() {
       
       bodyHTML += `<td class="cell-number">${quota ? formatNumber(quota) : '<span style="color:var(--text-muted);">—</span>'}</td>`;
       bodyHTML += `<td class="cell-input"><input type="number" class="input-cell" data-province="${key}" data-product="${pk}" value="${actual !== null ? actual : ''}" placeholder="0" onchange="handleInputChange(this)"></td>`;
-      bodyHTML += `<td class="cell-number"><span class="status-badge ${status.class}">${status.icon} ${status.pct ? status.pct.toFixed(0) + '%' : status.label}</span></td>`;
+      bodyHTML += `<td class="cell-number"><span class="status-badge ${status.class}">${status.pct !== undefined ? status.pct.toFixed(0) + '%' : status.label}</span></td>`;
     });
     
     bodyHTML += '</tr>';
@@ -414,7 +414,7 @@ function handleInputChange(input) {
   // Find the status cell (next sibling of input's parent)
   const statusCell = input.closest('td').nextElementSibling;
   if (statusCell) {
-    statusCell.innerHTML = `<span class="status-badge ${status.class}">${status.icon} ${status.pct ? status.pct.toFixed(0) + '%' : status.label}</span>`;
+    statusCell.innerHTML = `<span class="status-badge ${status.class}">${status.pct !== undefined ? status.pct.toFixed(0) + '%' : status.label}</span>`;
   }
   
   // Debounced refresh of dashboard cards
@@ -793,8 +793,8 @@ function handleExcelUpload(input) {
           for (const [colStr, productKey] of Object.entries(columnToProduct)) {
             const col = parseInt(colStr);
             const cell = ws[XLSX.utils.encode_cell({r, c: col})];
-            if (cell && typeof cell.v === 'number' && cell.v > 0) {
-              if (!provInventory[productKey]) provInventory[productKey] = 0;
+            if (cell && typeof cell.v === 'number' && Number.isFinite(cell.v)) {
+              if (!(productKey in provInventory)) provInventory[productKey] = 0;
               provInventory[productKey] += Math.round(cell.v);
               totalKg += cell.v;
             }

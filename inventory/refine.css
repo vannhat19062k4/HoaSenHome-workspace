@@ -1,0 +1,93 @@
+/* Inventory table uses one surface and restrained status accents in both themes. */
+.header,
+.control-bar,
+.table-container,
+.chart-card,
+.summary-card,
+.region-card {
+  box-shadow: none;
+}
+
+.table-scroll thead th,
+.table-scroll thead th.col-actual,
+.table-scroll thead th.sticky-province-heading {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+
+.table-scroll tbody tr:not(.row-region) td,
+.table-scroll tbody tr:not(.row-region):nth-child(even) td,
+.table-scroll tbody tr.row-tong-kho td,
+.table-scroll tbody tr.row-tong-kho td:not(:first-child) {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.table-scroll tbody tr:not(.row-region):hover td {
+  background: var(--bg-hover);
+}
+
+.table-scroll tbody tr.row-region td {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-weight: 700;
+  padding: 14px;
+  font-size: 13px;
+}
+
+.table-scroll tbody tr.row-tong-kho td {
+  border-top: 1px solid var(--border);
+}
+
+.table-scroll td.sticky-province-cell {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  white-space: nowrap;
+}
+
+.table-scroll .type-badge {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+
+.table-scroll .status-badge {
+  background: transparent;
+  padding: 2px 0;
+  gap: 6px;
+}
+
+.table-scroll .status-badge::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.table-scroll .status-badge.status-empty::before {
+  background: var(--border-hover);
+}
+
+.table-scroll .input-cell {
+  background: var(--bg-card);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+.table-scroll .input-cell:focus {
+  border-color: var(--text-secondary);
+  outline: 2px solid var(--border-hover);
+  outline-offset: 1px;
+}
+
+html[data-theme="light"] .table-scroll .status-low { color: #866000; }
+html[data-theme="light"] .table-scroll .status-high { color: #a65300; }
+html[data-theme="light"] .table-scroll .status-critical-high { color: #7745a5; }
+html[data-theme="light"] .table-scroll .status-critical-low { color: #b52030; }
+html[data-theme="light"] .table-scroll .status-ok { color: #16713d; }
+
+html[data-theme="light"] .table-scroll tbody tr.row-region td {
+  background: #e9edf2;
+}
