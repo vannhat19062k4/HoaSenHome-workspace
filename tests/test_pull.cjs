@@ -37,6 +37,22 @@ state.report = parseReport(data, 'fixture.xlsx');
 assert.equal(state.report.date, '24/09/2026');
 assert.equal(state.report.stores.length, 3);
 assert.deepEqual(Array.from(state.report.products, product => product.name), ['Lưới trát tường', 'Cục kê bê tông']);
+const shiftedGrid = grid.map(row => {
+  const shifted = Array(162);
+  row.forEach((value, col) => {
+    if (value !== undefined) shifted[col >= 93 ? col + 1 : col] = value;
+  });
+  return shifted;
+});
+shiftedGrid[0][160] = 9; // The next report section starts after the stock products.
+shiftedGrid[3][158] = 'Sản phẩm mới';
+shiftedGrid[4][158] = 7;
+const shiftedBook = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(shiftedBook, XLSX.utils.aoa_to_sheet(shiftedGrid), 'Chi tiết Cửa hàng');
+const shiftedReport = parseReport(XLSX.write(shiftedBook, { type: 'buffer', bookType: 'xlsx' }), 'shifted.xlsx');
+assert.deepEqual(Array.from(shiftedReport.products, product => product.name), ['Lưới trát tường', 'Cục kê bê tông', 'Sản phẩm mới']);
+assert.equal(shiftedReport.products[1].col, 157);
+assert.equal(shiftedReport.products[2].col, 158);
 state.result = calculate();
 assert.equal(state.result.total.target, 120);
 assert.equal(state.result.total.remaining, 60);

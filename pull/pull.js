@@ -153,10 +153,18 @@ function parseReport(buffer, fileName) {
   if (stockStart < 0) throw new Error('Không tìm thấy phần “TỒN KHO” trong sheet “Chi tiết Cửa hàng”.');
   const products = [];
   const names = new Set();
-  const stockEnd = XLSX.utils.decode_col('FA');
-  if (stockStart !== XLSX.utils.decode_col('CP') || range.e.c < stockEnd) throw new Error('Vùng tồn kho không đúng cấu trúc CP–FA của báo cáo.');
+  // The report can add product columns between periods. The next section in row 1
+  // marks the end of stock data; spreadsheet column letters are not stable.
+  let stockEnd = range.e.c;
+  for (let col = stockStart + 1; col <= range.e.c; col++) {
+    if (cell(ws, 0, col) != null && String(cell(ws, 0, col)).trim()) {
+      stockEnd = col - 1;
+      break;
+    }
+  }
   for (let col = stockStart; col <= stockEnd; col++) {
-    const name = String(cell(ws, 3, col) || cell(ws, 2, col) || '').trim().replace(/\s+/g, ' ');
+    const header = cell(ws, 3, col) || cell(ws, 2, col);
+    const name = typeof header === 'string' ? header.trim().replace(/\s+/g, ' ') : '';
     if (!name) continue;
     if (names.has(norm(name))) throw new Error(`Tên sản phẩm “${name}” xuất hiện nhiều lần trong phần tồn kho; cần xác định cột trước khi tính.`);
     names.add(norm(name));
