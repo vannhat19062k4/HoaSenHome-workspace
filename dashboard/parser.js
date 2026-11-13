@@ -5,6 +5,7 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
   const CATEGORIES = ['THÉP XÂY DỰNG', 'THÉP HÌNH', 'LƯỚI KẼM', 'INOX', 'PHỤ KIỆN'];
+  const SALES_CATEGORY_ALIASES = { INOX: ['INOX', 'NHÔM - INOX'] };
   const REGIONS = ['MIỀN NAM', 'MIỀN TRUNG', 'MIỀN BẮC'];
   function norm(v) { return String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').replace(/\s+/g, ' ').trim().toUpperCase(); }
   function num(v) { return typeof v === 'number' && Number.isFinite(v) ? v : null; }
@@ -46,6 +47,13 @@
     try { return labeledRow(ws, label, column, start, end); }
     catch { return null; }
   }
+  function salesCategoryRow(ws, category) {
+    for (const label of SALES_CATEGORY_ALIASES[category] || [category]) {
+      try { return labeledRow(ws, label, 2, 5, lastRow(ws), true); }
+      catch (error) { if (!String(error.message).startsWith('Không tìm thấy mục ')) throw error; }
+    }
+    throw Error(`Không tìm thấy mục ${category} trong sheet BÁN HÀNG.`);
+  }
   function reportDate(sales, filename) {
     const raw = value(sales, 2, 1);
     if (raw instanceof Date && !Number.isNaN(raw.getTime())) return raw.toISOString().slice(0, 10);
@@ -82,14 +90,15 @@
     };
     const products = [], details = []; let firstDetail = 5;
     for (const category of CATEGORIES) {
-      const row = labeledRow(sales, category, 2, 5, lastRow(sales), true);
+      const row = salesCategoryRow(sales, category);
       const stockRow = labeledRow(inventory, category, 2, 5, lastRow(inventory), true);
-      products.push({ name: category, daily_kg: metric(sales, dailyBlock, 'SL', row), mtd_kg: metric(sales, totalBlock, 'SẢN LƯỢNG', row), revenue_vnd: metric(sales, totalBlock, 'DOANH THU', row), profit_vnd: metric(sales, totalBlock, 'LỢI NHUẬN', row), inventory_kg: num(col(inventory, 'O', stockRow)), delta_kg: metric(sales, deltaBlock, 'SL', row) });
+      const displayCategory = String(value(sales, 2, row)).trim();
+      products.push({ name: displayCategory, daily_kg: metric(sales, dailyBlock, 'SL', row), mtd_kg: metric(sales, totalBlock, 'SẢN LƯỢNG', row), revenue_vnd: metric(sales, totalBlock, 'DOANH THU', row), profit_vnd: metric(sales, totalBlock, 'LỢI NHUẬN', row), inventory_kg: num(col(inventory, 'O', stockRow)), delta_kg: metric(sales, deltaBlock, 'SL', row) });
       let subgroup = '';
       for (let dr = firstDetail; dr < row; dr++) {
         const group = value(sales, 2, dr), name = value(sales, 3, dr);
         if (String(group ?? '').trim()) subgroup = String(group).trim();
-        if (name) details.push({ category, subgroup, name: String(name).trim(), daily_kg: metric(sales, dailyBlock, 'SL', dr), mtd_kg: metric(sales, totalBlock, 'SẢN LƯỢNG', dr), delta_kg: metric(sales, deltaBlock, 'SL', dr), revenue_vnd: metric(sales, totalBlock, 'DOANH THU', dr), profit_vnd: metric(sales, totalBlock, 'LỢI NHUẬN', dr) });
+        if (name) details.push({ category: displayCategory, subgroup, name: String(name).trim(), daily_kg: metric(sales, dailyBlock, 'SL', dr), mtd_kg: metric(sales, totalBlock, 'SẢN LƯỢNG', dr), delta_kg: metric(sales, deltaBlock, 'SL', dr), revenue_vnd: metric(sales, totalBlock, 'DOANH THU', dr), profit_vnd: metric(sales, totalBlock, 'LỢI NHUẬN', dr) });
       }
       firstDetail = row + 1;
     }
