@@ -50,8 +50,8 @@ function parsePr(buffer, fileName) {
   if (!sheet?.['!ref']) throw new Error('File PR không có dữ liệu.');
   const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
   const headers = rows[0].map(norm);
-  const columns = Object.fromEntries(['so chung tu', 'trang thai', 'nguoi tao chung tu', 'ten hang'].map(name => [name, headers.indexOf(name)]));
-  if (Object.values(columns).some(index => index < 0)) throw new Error('File PR cần các cột “Số chứng từ”, “Trạng thái”, “Người tạo chứng từ”, “Tên hàng”.');
+  const columns = Object.fromEntries(['so chung tu', 'trang thai', 'nguoi tao chung tu', 'ten hang', 'so luong', 'dvt'].map(name => [name, headers.indexOf(name)]));
+  if (Object.values(columns).some(index => index < 0)) throw new Error('File PR cần các cột “Số chứng từ”, “Trạng thái”, “Người tạo chứng từ”, “Tên hàng”, “Số lượng”, “ĐVT”.');
   const entries = [];
   rows.slice(1).forEach((row, index) => {
     if (row.every(value => value === '' || value == null)) return;
@@ -60,7 +60,10 @@ function parsePr(buffer, fileName) {
     const product = String(row[columns['ten hang']] ?? '').trim();
     const status = String(row[columns['trang thai']] ?? '').trim().toUpperCase();
     if (!documentId || !store || !product || !status) throw new Error(`Dòng ${index + 2} trong file PR thiếu số chứng từ, cửa hàng, tên hàng hoặc trạng thái.`);
-    entries.push({ documentId, store, product, status });
+    const quantity = Number(row[columns['so luong']]);
+    const unit = String(row[columns.dvt] ?? '').trim();
+    if (!unit || row[columns['so luong']] === '' || !Number.isFinite(quantity) || quantity < 0) throw new Error(`Dòng ${index + 2} trong file PR thiếu hoặc sai Số lượng/ĐVT.`);
+    entries.push({ documentId, store, product, status, quantity, unit });
   });
   if (!entries.length) throw new Error('File PR không có dòng đề nghị hợp lệ.');
   return { fileName, entries };
@@ -96,8 +99,11 @@ function matchPr(report, pr, product) {
     if (parsed.number !== null) candidates = candidates.filter(store => Number(String(store.id).match(/\.(\d+)$/)?.[1]) === parsed.number);
     if (candidates.length !== 1) { unmatched.add(entry.store); return; }
     const id = candidates[0].id;
-    if (!byStore.has(id)) byStore.set(id, new Set());
-    byStore.get(id).add(entry.documentId);
+    if (!byStore.has(id)) byStore.set(id, { documents: new Set(), kg: 0, unconverted: 0 });
+    const matched = byStore.get(id);
+    matched.documents.add(entry.documentId);
+    if (norm(entry.unit) === 'kg') matched.kg += entry.quantity;
+    else matched.unconverted++;
   });
   return { byStore, unmatched, productRows };
 }
@@ -291,13 +297,15 @@ function rulesFromForm() {
 }
 
 function summarize(rows) {
-  const summary = { stores: rows.length, reached: 0, target: 0, stock: 0, covered: 0, remaining: 0 };
+  const summary = { stores: rows.length, reached: 0, target: 0, stock: 0, covered: 0, remaining: 0, prKg: 0, prUnconverted: 0 };
   rows.forEach(row => {
     summary.reached += Number(row.stock >= row.target);
     summary.target += row.target;
     summary.stock += row.stock;
     summary.covered += Math.min(row.stock, row.target);
     summary.remaining += row.remaining;
+    summary.prKg += row.prKg || 0;
+    summary.prUnconverted += row.prUnconverted || 0;
   });
   summary.progress = summary.target ? summary.covered / summary.target : 0;
   return summary;
@@ -314,7 +322,8 @@ function calculate() {
     if (!target) continue;
     const raw = cell(state.report.ws, store.row, product.col);
     if (typeof raw !== 'number' || !Number.isFinite(raw) || raw < 0) throw new Error(`Tồn kho ${product.name} tại ${store.id} (dòng ${store.row + 1}) không phải số không âm; chưa thể tính.`);
-    rows.push({ ...store, target, stock: raw, remaining: Math.max(target - raw, 0), progress: Math.min(raw / target, 1), prDocuments: [...(prMatches.byStore.get(store.id) || [])] });
+    const pr = prMatches.byStore.get(store.id);
+    rows.push({ ...store, target, stock: raw, remaining: Math.max(target - raw, 0), progress: Math.min(raw / target, 1), prDocuments: [...(pr?.documents || [])], prKg: pr?.kg || 0, prUnconverted: pr?.unconverted || 0 });
   }
   if (!rows.length) throw new Error('Không có cửa hàng nào thuộc mô hình đã nhập mức chia.');
   const byRegion = Object.fromEntries(regions.map(region => [region.id, rows.filter(row => row.region === region.id)]));
@@ -346,14 +355,14 @@ function renderRegion(region, rows) {
   });
   const detailRows = [...provinces.values()].map(province => {
     const subtotal = summarize(province.rows);
-    return `<tr class="province-total"><th scope="rowgroup">${esc(province.name)}<small>${subtotal.reached}/${subtotal.stores} CH đạt mức</small></th><td>${subtotal.stores} cửa hàng</td><td>—</td><td class="numeric">${fmt(subtotal.target)}</td><td class="numeric">${fmt(subtotal.stock)}</td><td class="numeric">${fmt(subtotal.remaining)}</td><td>—</td></tr>
-      ${province.rows.map(row => `<tr class="store-row"><td>${esc(row.province || '—')}</td><td class="store-name"><strong>${esc(row.name)}</strong><small>${esc(row.id)}</small></td><td><span class="model-badge">${esc(row.model)}</span></td><td class="numeric">${fmt(row.target)}</td><td class="numeric ${row.stock === 0 ? 'pull-zero' : ''}">${row.stock === 0 ? '—' : fmt(row.stock)}</td><td class="numeric"><span class="pull-remaining ${row.remaining ? 'needs-pull' : 'pull-complete'}">${row.remaining ? fmt(row.remaining) : '✓ Đã đạt'}</span></td><td>${state.pr ? `<span class="pr-badge ${row.prDocuments.length ? 'pr-sent' : 'pr-unsent'}" ${row.prDocuments.length ? `title="${esc(`PR: ${row.prDocuments.join(', ')}`)}"` : ''}>${row.prDocuments.length ? 'Đã gửi' : 'Chưa gửi'}</span>` : '<span class="pr-unavailable">—</span>'}</td></tr>`).join('')}`;
+    return `<tr class="province-total"><th scope="rowgroup">${esc(province.name)}<small>${subtotal.reached}/${subtotal.stores} CH đạt mức</small></th><td>${subtotal.stores} cửa hàng</td><td>—</td><td class="numeric">${fmt(subtotal.target)}</td><td class="numeric">${fmt(subtotal.stock)}</td><td class="numeric">${fmt(subtotal.remaining)}</td><td>—</td><td class="numeric">${state.pr ? fmt(subtotal.prKg) : '—'}${subtotal.prUnconverted ? `<small>${subtotal.prUnconverted} dòng chưa quy đổi</small>` : ''}</td></tr>
+      ${province.rows.map(row => `<tr class="store-row"><td>${esc(row.province || '—')}</td><td class="store-name"><strong>${esc(row.name)}</strong><small>${esc(row.id)}</small></td><td><span class="model-badge">${esc(row.model)}</span></td><td class="numeric">${fmt(row.target)}</td><td class="numeric ${row.stock === 0 ? 'pull-zero' : ''}">${row.stock === 0 ? '—' : fmt(row.stock)}</td><td class="numeric"><span class="pull-remaining ${row.remaining ? 'needs-pull' : 'pull-complete'}">${row.remaining ? fmt(row.remaining) : '✓ Đã đạt'}</span></td><td>${state.pr ? `<span class="pr-badge ${row.prDocuments.length ? 'pr-sent' : 'pr-unsent'}" ${row.prDocuments.length ? `title="${esc(`PR: ${row.prDocuments.join(', ')}`)}"` : ''}>${row.prDocuments.length ? 'Đã gửi' : 'Chưa gửi'}</span>` : '<span class="pr-unavailable">—</span>'}</td><td class="numeric">${state.pr ? fmt(row.prKg) : '—'}${row.prUnconverted ? `<small>${row.prUnconverted} dòng chưa quy đổi</small>` : ''}</td></tr>`).join('')}`;
   }).join('');
   return `<section class="panel region-block"><div class="region-top"><div><h2>${region.label}</h2><p>${sum.stores} cửa hàng · ${sum.reached} đã đạt mức · ${provinces.size} tỉnh</p></div><strong>${fmt(sum.progress * 100)}% mức phủ</strong></div>
     <div class="region-figures"><span>Mức cần có <strong>${fmt(sum.target)} kg</strong></span><span>Tồn hiện tại <strong>${fmt(sum.stock)} kg</strong></span><span>Còn cần kéo <strong>${fmt(sum.remaining)} kg</strong></span></div>
     <div class="progress-track"><div class="progress-fill" style="width:${(sum.progress * 100).toFixed(2)}%"></div></div>
-    <p class="region-note">Mỗi dòng vàng nhạt là tổng của một tỉnh. Cột “Còn cần kéo” cộng phần thiếu của từng cửa hàng.</p>
-    <div class="table-wrap pull-table-wrap"><table class="pull-detail-table"><thead><tr><th scope="col">Tỉnh</th><th scope="col">Tên cửa hàng</th><th scope="col">Mô hình</th><th scope="col" class="numeric">Mức cần có <small>kg / CH</small></th><th scope="col" class="numeric">Tồn hiện tại <small>kg</small></th><th scope="col" class="numeric">Còn cần kéo <small>kg</small></th><th scope="col">Trạng thái PR</th></tr></thead><tbody>${detailRows || '<tr><td colspan="7">Không có cửa hàng khớp bộ lọc.</td></tr>'}</tbody></table></div></section>`;
+    <p class="region-note">Mỗi dòng vàng nhạt là tổng của một tỉnh. Cột “Còn cần kéo” cộng phần thiếu của từng cửa hàng. Khối lượng PR chỉ cộng dòng có ĐVT KG; các đơn vị khác ghi chưa quy đổi.</p>
+    <div class="table-wrap pull-table-wrap"><table class="pull-detail-table"><thead><tr><th scope="col">Tỉnh</th><th scope="col">Tên cửa hàng</th><th scope="col">Mô hình</th><th scope="col" class="numeric">Mức cần có <small>kg / CH</small></th><th scope="col" class="numeric">Tồn hiện tại <small>kg</small></th><th scope="col" class="numeric">Còn cần kéo <small>kg</small></th><th scope="col">Trạng thái PR</th><th scope="col" class="numeric">Khối lượng PR <small>kg</small></th></tr></thead><tbody>${detailRows || '<tr><td colspan="8">Không có cửa hàng khớp bộ lọc.</td></tr>'}</tbody></table></div></section>`;
 }
 
 function renderResult(result) {
@@ -383,26 +392,27 @@ function exportExcel() {
     ['Báo cáo', state.report.fileName], ['Tồn kho đến ngày', state.report.date || 'Không xác định'], ['Sản phẩm', result.product.name], ['File PR', state.pr?.fileName || 'Chưa nhập'],
     [], ['Mô hình', 'Mức chia (kg/CH)', 'Số cửa hàng'],
     ...models.map(model => [model, result.rules[model] ?? '', state.report.stores.filter(store => store.model === model).length]),
-    [], ['Miền', 'Số cửa hàng', 'Đã đạt mức', 'Mức cần có (kg)', 'Đã kéo / tồn hiện tại (kg)', 'Còn cần kéo (kg)', 'Mức phủ'],
-    ...regions.map(region => { const s = summarize(result.byRegion[region.id]); return [region.label, s.stores, s.reached, s.target, s.stock, s.remaining, s.progress]; }),
-    ['Toàn quốc', total.stores, total.reached, total.target, total.stock, total.remaining, total.progress],
+    [], ['Miền', 'Số cửa hàng', 'Đã đạt mức', 'Mức cần có (kg)', 'Đã kéo / tồn hiện tại (kg)', 'Còn cần kéo (kg)', 'Mức phủ', 'Khối lượng PR (kg)', 'Dòng PR chưa quy đổi'],
+    ...regions.map(region => { const s = summarize(result.byRegion[region.id]); return [region.label, s.stores, s.reached, s.target, s.stock, s.remaining, s.progress, state.pr ? s.prKg : '', s.prUnconverted]; }),
+    ['Toàn quốc', total.stores, total.reached, total.target, total.stock, total.remaining, total.progress, state.pr ? total.prKg : '', total.prUnconverted],
     [], ['Ghi chú', 'Tồn hiện tại được tính là đã kéo. Mức phủ theo từng cửa hàng; tồn vượt ở nơi khác không bù phần thiếu.'],
     ['Quy tắc PR', 'Có bất kỳ chứng từ PR nào cho nhóm sản phẩm và cửa hàng khớp thì ghi Đã gửi, kể cả REJECTED hoặc INCOMPLETE.'],
+    ['Khối lượng PR', 'Chỉ cộng Số lượng khi ĐVT là KG. Dòng đơn vị khác được ghi chưa quy đổi; không cộng vào kg.'],
     ['CH trong PR chưa ghép được', result.prMatches.unmatched.size],
   ];
   const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
-  summarySheet['!cols'] = [{ wch: 26 }, { wch: 36 }, { wch: 18 }, { wch: 20 }, { wch: 22 }, { wch: 24 }, { wch: 18 }];
+  summarySheet['!cols'] = [{ wch: 26 }, { wch: 36 }, { wch: 18 }, { wch: 20 }, { wch: 22 }, { wch: 24 }, { wch: 18 }, { wch: 21 }, { wch: 21 }];
   for (let row = 17; row <= 20; row++) if (summarySheet[`G${row}`]) summarySheet[`G${row}`].z = '0.0%';
   XLSX.utils.book_append_sheet(book, summarySheet, 'Tổng hợp');
   for (const region of regions) {
     const rows = result.byRegion[region.id];
-    const detail = [['Mã CH', 'Mã CH cũ', 'Tỉnh', 'Cửa hàng', 'Mô hình', 'Đã kéo / tồn hiện tại (kg)', 'Mức chia (kg/CH)', 'Còn cần kéo (kg)', 'Mức phủ', 'Trạng thái', 'Trạng thái PR'],
-      ...rows.map(row => [row.id, row.oldId, row.province, row.name, row.model, row.stock, row.target, row.remaining, row.progress, row.remaining ? 'Còn cần kéo' : row.stock > row.target ? 'Vượt mức' : 'Đã đạt', state.pr ? row.prDocuments.length ? 'Đã gửi' : 'Chưa gửi' : 'Chưa nhập file PR'])];
+    const detail = [['Mã CH', 'Mã CH cũ', 'Tỉnh', 'Cửa hàng', 'Mô hình', 'Đã kéo / tồn hiện tại (kg)', 'Mức chia (kg/CH)', 'Còn cần kéo (kg)', 'Mức phủ', 'Trạng thái', 'Trạng thái PR', 'Khối lượng PR (kg)', 'Dòng PR chưa quy đổi'],
+      ...rows.map(row => [row.id, row.oldId, row.province, row.name, row.model, row.stock, row.target, row.remaining, row.progress, row.remaining ? 'Còn cần kéo' : row.stock > row.target ? 'Vượt mức' : 'Đã đạt', state.pr ? row.prDocuments.length ? 'Đã gửi' : 'Chưa gửi' : 'Chưa nhập file PR', state.pr ? row.prKg : '', row.prUnconverted])];
     const sheet = XLSX.utils.aoa_to_sheet(detail);
-    sheet['!cols'] = [{ wch: 14 }, { wch: 13 }, { wch: 23 }, { wch: 28 }, { wch: 12 }, { wch: 21 }, { wch: 20 }, { wch: 25 }, { wch: 17 }, { wch: 18 }, { wch: 17 }];
-    sheet['!autofilter'] = { ref: `A1:K${detail.length}` };
+    sheet['!cols'] = [{ wch: 14 }, { wch: 13 }, { wch: 23 }, { wch: 28 }, { wch: 12 }, { wch: 21 }, { wch: 20 }, { wch: 25 }, { wch: 17 }, { wch: 18 }, { wch: 17 }, { wch: 21 }, { wch: 21 }];
+    sheet['!autofilter'] = { ref: `A1:M${detail.length}` };
     for (let row = 2; row <= detail.length; row++) {
-      for (const col of ['F', 'G', 'H']) if (sheet[`${col}${row}`]) sheet[`${col}${row}`].z = '#,##0.###';
+      for (const col of ['F', 'G', 'H', 'L']) if (sheet[`${col}${row}`]) sheet[`${col}${row}`].z = '#,##0.###';
       if (sheet[`I${row}`]) sheet[`I${row}`].z = '0.0%';
     }
     XLSX.utils.book_append_sheet(book, sheet, region.label);
