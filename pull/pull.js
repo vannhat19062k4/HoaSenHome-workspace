@@ -69,6 +69,11 @@ function parsePr(buffer, fileName) {
 function prProductMatches(selected, item) {
   const group = norm(selected);
   const name = norm(item);
+  // PR lines describe Xingfa profiles as “Nhôm thanh ... Xingfa”, rather
+  // than using the inventory section's “Nhôm Xingfa” word order.
+  if (group === 'nhom xingfa') {
+    return name === 'nhom' || (name.startsWith('nhom ') && /\bxingfa\b/.test(name));
+  }
   return name === group || name.startsWith(`${group} `);
 }
 

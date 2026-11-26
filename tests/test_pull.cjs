@@ -108,6 +108,16 @@ const duplicates = matchPr(duplicateStores, duplicatePr, { name: 'Cục kê bê 
 assert.deepEqual(Array.from(duplicates.byStore.keys()), ['AGI.25']);
 assert.equal(duplicates.unmatched.size, 2);
 
+const aluminumPr = { entries: [
+  { documentId: 'PR-8', store: 'HS017.01_CuaHangNam,', product: 'Nhôm thanh khung cửa sổ xám C03318 Xingfa QĐ H55' },
+  { documentId: 'PR-9', store: 'HS018.01_CuaHangTrung,', product: 'Nhôm' },
+  { documentId: 'PR-10', store: 'HS019.01_CuaHangBac,', product: 'Nhôm thanh loại khác' },
+  { documentId: 'PR-11', store: 'HS019.01_CuaHangBac,', product: 'Thang nhôm Xingfa' },
+] };
+const aluminumMatches = matchPr(state.report, aluminumPr, { name: 'Nhôm Xingfa' });
+assert.equal(aluminumMatches.productRows, 2);
+assert.deepEqual(Array.from(aluminumMatches.byStore.keys()), ['NAM.01', 'TRUNG.01']);
+
 const grouped = renderRegion({ label: 'Miền Nam' }, [
   { id: 'AG.1', province: 'An Giang', name: 'Cửa hàng 1', model: '1A', target: 20, stock: 5, remaining: 15, prDocuments: ['PR-1'] },
   { id: 'AG.2', province: 'An Giang', name: 'Cửa hàng 2', model: '1A', target: 20, stock: 50, remaining: 0, prDocuments: [] },
