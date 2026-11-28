@@ -71,26 +71,30 @@ assert.equal(exported.Sheets['Miền Bắc'].K2.v, 'Chưa nhập file PR');
 
 const prBook = XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(prBook, XLSX.utils.aoa_to_sheet([
-  ['Số chứng từ', 'Trạng thái', 'Người tạo chứng từ', 'Tên hàng', 'Số lượng', 'ĐVT'],
-  ['PR-1', 'APPROVED', 'HS017.01_CuaHangNam,', 'Lưới trát tường 1.2m', 13.5, 'KG'],
-  ['PR-1', 'APPROVED', 'HS017.01_CuaHangNam,', 'Lưới trát tường 1.5m', 2.25, 'KG'],
-  ['PR-2', 'REJECTED', 'HS018.01_CuaHangTrung,', 'Lưới trát tường 1.2m', 4, 'KG'],
-  ['PR-3', 'APPROVED', 'HS019.01_CuaHangKhac,', 'Lưới trát tường 1.2m', 8, 'KG'],
-  ['PR-4', 'APPROVED', 'HS017.01_CuaHangNam,', 'Cục kê bê tông PCA 70', 5, 'Thùng'],
+  ['Số chứng từ', 'Trạng thái', 'Ngày tạo', 'Người tạo chứng từ', 'Tên hàng', 'Số lượng', 'ĐVT'],
+  ['PR-1', 'APPROVED', '2026-11-03T15:17:28.000+07:00', 'HS017.01_CuaHangNam,', 'Lưới trát tường 1.2m', 13.5, 'KG'],
+  ['PR-1', 'APPROVED', '2026-11-03T15:17:28.000+07:00', 'HS017.01_CuaHangNam,', 'Lưới trát tường 1.5m', 2.25, 'KG'],
+  ['PR-2', 'REJECTED', '05/11/2026', 'HS018.01_CuaHangTrung,', 'Lưới trát tường 1.2m', 4, 'KG'],
+  ['PR-3', 'APPROVED', '2026-11-06', 'HS019.01_CuaHangKhac,', 'Lưới trát tường 1.2m', 8, 'KG'],
+  ['PR-4', 'APPROVED', '2026-11-04', 'HS017.01_CuaHangNam,', 'Cục kê bê tông PCA 70', 5, 'Thùng'],
+  ['PR-5', 'INCOMPLETE', '2026-11-07', 'HS017.01_CuaHangNam,', 'Lưới trát tường 1.2m', 1, 'KG'],
 ]), 'Sheet2');
 state.pr = parsePr(XLSX.write(prBook, { type: 'buffer', bookType: 'xlsx' }), 'pr.xlsx');
 const prMatches = matchPr(state.report, state.pr, state.report.products[0]);
-assert.equal(prMatches.productRows, 4);
+assert.equal(prMatches.productRows, 5);
 assert.equal(prMatches.byStore.size, 2);
 assert.equal(prMatches.unmatched.size, 1);
-assert.equal(prMatches.byStore.get('NAM.01').kg, 15.75);
+assert.equal(prMatches.byStore.get('NAM.01').kg, 16.75);
+assert.equal(prMatches.byStore.get('NAM.01').latestDate.display, '07/11/2026');
 state.result = calculate();
-assert.deepEqual(Array.from(state.result.rows, row => row.prDocuments.length), [1, 1, 0]);
-assert.deepEqual(Array.from(state.result.rows, row => row.prKg), [15.75, 4, 0]);
+assert.deepEqual(Array.from(state.result.rows, row => row.prDocuments.length), [2, 1, 0]);
+assert.deepEqual(Array.from(state.result.rows, row => row.prKg), [16.75, 4, 0]);
+assert.deepEqual(Array.from(state.result.rows, row => row.prDate), ['07/11/2026', '05/11/2026', '']);
 exportExcel();
 assert.equal(exported.Sheets['Miền Nam'].K2.v, 'Đã gửi');
-assert.equal(exported.Sheets['Miền Nam'].L2.v, 15.75);
-assert.equal(exported.Sheets['Tổng hợp'].H20.v, 19.75);
+assert.equal(exported.Sheets['Miền Nam'].L2.v, 16.75);
+assert.equal(exported.Sheets['Miền Nam'].N2.v, '07/11/2026');
+assert.equal(exported.Sheets['Tổng hợp'].H20.v, 20.75);
 assert.equal(exported.Sheets['Miền Bắc'].K2.v, 'Chưa gửi');
 
 fields['#product-name'].value = 'Cục kê bê tông';
@@ -125,7 +129,7 @@ assert.equal(aluminumMatches.productRows, 2);
 assert.deepEqual(Array.from(aluminumMatches.byStore.keys()), ['NAM.01', 'TRUNG.01']);
 
 const grouped = renderRegion({ label: 'Miền Nam' }, [
-  { id: 'AG.1', province: 'An Giang', name: 'Cửa hàng 1', model: '1A', target: 20, stock: 5, remaining: 15, prDocuments: ['PR-1'], prKg: 15.75, prUnconverted: 1 },
+  { id: 'AG.1', province: 'An Giang', name: 'Cửa hàng 1', model: '1A', target: 20, stock: 5, remaining: 15, prDocuments: ['PR-1'], prKg: 15.75, prUnconverted: 1, prDate: '07/11/2026' },
   { id: 'AG.2', province: 'An Giang', name: 'Cửa hàng 2', model: '1A', target: 20, stock: 50, remaining: 0, prDocuments: [] },
   { id: 'KG.1', province: 'Kiên Giang', name: 'Cửa hàng 3', model: 'CHTT', target: 50, stock: 0, remaining: 50, prDocuments: [] },
 ]);
@@ -137,6 +141,7 @@ assert.match(grouped, /Đã gửi/);
 assert.match(grouped, /Chưa gửi/);
 assert.match(grouped, /Khối lượng PR/);
 assert.match(grouped, /1 dòng chưa quy đổi/);
+assert.match(grouped, /Ngày gửi PR[\s\S]*07\/11\/2026/);
 const filterRows = [
   { province: 'An Giang', name: 'Long Xuyên' },
   { province: 'An Giang', name: 'Châu Đốc' },
